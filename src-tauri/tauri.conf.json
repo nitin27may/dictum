@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Wisper",
+  "version": "0.1.0",
+  "identifier": "com.northbridge.wisper",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "overlay",
+        "url": "index.html#overlay",
+        "width": 420,
+        "height": 90,
+        "minWidth": 420,
+        "minHeight": 90,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false,
+        "resizable": false,
+        "shadow": false
+      },
+      {
+        "label": "settings",
+        "url": "index.html#settings",
+        "title": "Wisper Settings",
+        "width": 600,
+        "height": 520,
+        "minWidth": 560,
+        "minHeight": 480,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "visible": false,
+        "resizable": false,
+        "center": true,
+        "devtools": true
+      }
+    ],
+    "trayIcon": {
+      "id": "wisper-tray",
+      "iconPath": "icons/tray-icon.png",
+      "iconAsTemplate": true,
+      "tooltip": "Wisper — Hold Alt+Space to transcribe"
+    },
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ],
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "infoPlist": "Info.plist",
+      "minimumSystemVersion": "13.0",
+      "frameworks": []
+    }
+  }
+}

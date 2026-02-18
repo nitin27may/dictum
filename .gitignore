@@ -1,0 +1,23 @@
+# Build artifacts
+dist/
+src-tauri/target/
+
+# Node
+node_modules/
+.pnp
+.pnp.js
+
+# Environment (secrets)
+.env.local
+.env.*.local
+
+# Tauri store (contains persisted settings with API keys)
+wisper-settings.json
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
