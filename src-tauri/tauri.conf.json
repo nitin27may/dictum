@@ -27,7 +27,8 @@
         "visible": false,
         "focus": false,
         "resizable": false,
-        "shadow": false
+        "shadow": false,
+        "devtools": true
       },
       {
         "label": "settings",

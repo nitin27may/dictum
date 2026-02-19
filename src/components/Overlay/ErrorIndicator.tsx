@@ -5,22 +5,21 @@ interface ErrorIndicatorProps {
 }
 
 export function ErrorIndicator({ message }: ErrorIndicatorProps) {
-  // Truncate long error messages for the compact overlay
-  const display = message.length > 52 ? `${message.slice(0, 49)}…` : message;
+  const display = message.length > 44 ? `${message.slice(0, 41)}…` : message;
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Red flash icon */}
+    <div className="flex items-center gap-2.5">
+      {/* Error dot */}
       <motion.div
-        className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500/20 flex-shrink-0"
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: [1.2, 1], opacity: 1 }}
-        transition={{ type: "spring", stiffness: 500, damping: 15 }}
+        className="flex items-center justify-center w-5 h-5 rounded-full bg-red-500/25 flex-shrink-0"
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 500, damping: 18 }}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path
-            d="M6 2v4M6 9.5h.01"
-            stroke="#ef4444"
+            d="M5 2.5v3M5 7.5h.01"
+            stroke="#f87171"
             strokeWidth="1.5"
             strokeLinecap="round"
           />
@@ -28,7 +27,7 @@ export function ErrorIndicator({ message }: ErrorIndicatorProps) {
       </motion.div>
 
       <motion.span
-        className="text-red-400 text-xs font-medium leading-tight"
+        className="text-red-400 text-[12px] font-normal leading-tight"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}

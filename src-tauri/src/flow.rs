@@ -19,7 +19,7 @@ use tauri::{AppHandle, Emitter, Manager};
 const MIN_HOLD_MS: u128 = 200;
 const MAX_RECORD_SECS: u64 = 60;
 
-/// Called on hotkey press. Shows overlay, starts cpal capture.
+/// Called on hotkey press. Starts cpal capture and drives the overlay via events.
 pub async fn on_press(app: AppHandle, state: AppState) {
     // Re-entrancy guard
     {
@@ -30,18 +30,38 @@ pub async fn on_press(app: AppHandle, state: AppState) {
         *down = true;
     }
 
-    *state.pressed_at.lock().await = Some(Instant::now());
+    let start_time = Instant::now();
+    *state.pressed_at.lock().await = Some(start_time);
 
-    show_overlay(&app);
     emit_overlay(&app, "recording-started", ());
 
     let mut capture = state.audio_capture.lock().await;
     if let Err(e) = capture.start(app.clone()) {
         log::error!("Failed to start capture: {}", e);
         emit_overlay(&app, "recording-error", e.to_string());
-        hide_overlay_after(&app, Duration::from_millis(1500));
         *state.is_recording.lock().await = false;
+        return;
     }
+
+    // Duration ticker — emits elapsed seconds every second while recording.
+    // Also enforces the hard MAX_RECORD_SECS cap.
+    let ticker_app = app.clone();
+    let ticker_state = state.clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            if !*ticker_state.is_recording.lock().await {
+                break;
+            }
+            let elapsed = start_time.elapsed().as_secs();
+            emit_overlay(&ticker_app, "recording-tick", elapsed);
+            if elapsed >= MAX_RECORD_SECS {
+                log::info!("Max recording duration ({} sec) reached, auto-stopping", MAX_RECORD_SECS);
+                tauri::async_runtime::spawn(on_release(ticker_app.clone(), ticker_state.clone()));
+                break;
+            }
+        }
+    });
 }
 
 /// Called on hotkey release. Stops capture, transcribes, injects text.
@@ -53,10 +73,9 @@ pub async fn on_release(app: AppHandle, state: AppState) {
         .map(|t| t.elapsed().as_millis())
         .unwrap_or(0);
 
-    let samples = {
+    let (samples, sample_rate) = {
         let mut capture = state.audio_capture.lock().await;
         if !capture.is_recording() {
-            hide_overlay(&app);
             return;
         }
         match capture.stop() {
@@ -64,7 +83,6 @@ pub async fn on_release(app: AppHandle, state: AppState) {
             Err(e) => {
                 log::error!("Failed to stop capture: {}", e);
                 emit_overlay(&app, "recording-error", e.to_string());
-                hide_overlay_after(&app, Duration::from_millis(1500));
                 return;
             }
         }
@@ -72,33 +90,32 @@ pub async fn on_release(app: AppHandle, state: AppState) {
 
     // Tap too short — ignore silently
     if hold_ms < MIN_HOLD_MS {
-        hide_overlay(&app);
+        emit_overlay(&app, "recording-cancelled", ());
         return;
     }
 
     if samples.is_empty() {
         emit_overlay(&app, "recording-error", "No audio captured".to_string());
-        hide_overlay_after(&app, Duration::from_millis(1500));
         return;
     }
 
     emit_overlay(&app, "processing-started", ());
 
     // Encode WAV
-    let wav_bytes = match crate::audio::encoder::encode_wav(&samples) {
+    let wav_bytes = match crate::audio::encoder::encode_wav(&samples, sample_rate) {
         Ok(b) => b,
         Err(e) => {
             log::error!("WAV encode failed: {}", e);
             emit_overlay(&app, "recording-error", e.to_string());
-            hide_overlay_after(&app, Duration::from_millis(1500));
             return;
         }
     };
 
     log::info!(
-        "Stopped recording: {:.1}s, {} samples, {} WAV bytes",
+        "Stopped recording: {:.1}s, {} samples @ {}Hz, {} WAV bytes",
         hold_ms as f64 / 1000.0,
         samples.len(),
+        sample_rate,
         wav_bytes.len()
     );
 
@@ -112,7 +129,6 @@ pub async fn on_release(app: AppHandle, state: AppState) {
 
             if text.is_empty() {
                 emit_overlay(&app, "recording-error", "No speech detected".to_string());
-                hide_overlay_after(&app, Duration::from_millis(1500));
                 return;
             }
 
@@ -121,17 +137,14 @@ pub async fn on_release(app: AppHandle, state: AppState) {
             if let Err(e) = crate::injection::inject_text(&text).await {
                 log::error!("Text injection failed: {}", e);
                 emit_overlay(&app, "recording-error", format!("Injection failed: {e}"));
-                hide_overlay_after(&app, Duration::from_millis(1500));
                 return;
             }
 
             emit_overlay(&app, "recording-success", char_count);
-            hide_overlay_after(&app, Duration::from_millis(800));
         }
         Err(e) => {
             log::error!("Transcription failed: {}", e);
             emit_overlay(&app, "recording-error", e.to_string());
-            hide_overlay_after(&app, Duration::from_millis(1500));
         }
     }
 }
@@ -270,29 +283,13 @@ async fn transcribe_azure(wav_bytes: Vec<u8>, config: &Value) -> Result<String> 
 
 // ── Window helpers ─────────────────────────────────────────────────────────────
 
-fn show_overlay(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("overlay") {
-        let _ = w.show();
-        let _ = w.set_ignore_cursor_events(true);
-    }
-}
-
-fn hide_overlay(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("overlay") {
-        let _ = w.hide();
-    }
-}
-
-fn hide_overlay_after(app: &AppHandle, delay: Duration) {
-    let app = app.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(delay).await;
-        hide_overlay(&app);
-    });
-}
-
 fn emit_overlay<S: serde::Serialize + Clone>(app: &AppHandle, event: &str, payload: S) {
     if let Some(w) = app.get_webview_window("overlay") {
-        let _ = w.emit(event, payload);
+        match w.emit(event, payload) {
+            Ok(_) => log::debug!("emit_overlay: '{}'", event),
+            Err(e) => log::error!("emit_overlay '{}' failed: {}", event, e),
+        }
+    } else {
+        log::error!("emit_overlay: overlay window not found for '{}'", event);
     }
 }

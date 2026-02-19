@@ -21,7 +21,7 @@ pub async fn stop_recording(state: State<'_, AppState>) -> Result<Vec<u8>, Strin
         return Err("Not recording".to_string());
     }
 
-    let samples = capture.stop().map_err(|e| {
+    let (samples, sample_rate) = capture.stop().map_err(|e| {
         log::error!("Failed to stop recording: {}", e);
         e.to_string()
     })?;
@@ -30,10 +30,10 @@ pub async fn stop_recording(state: State<'_, AppState>) -> Result<Vec<u8>, Strin
         return Err("No audio data captured".to_string());
     }
 
-    let duration = crate::audio::encoder::samples_duration_secs(samples.len());
-    log::info!("Stopped recording: {:.1}s, {} samples", duration, samples.len());
+    let duration = crate::audio::encoder::samples_duration_secs(samples.len(), sample_rate);
+    log::info!("Stopped recording: {:.1}s, {} samples @ {}Hz", duration, samples.len(), sample_rate);
 
-    let wav_bytes = crate::audio::encoder::encode_wav(&samples).map_err(|e| {
+    let wav_bytes = crate::audio::encoder::encode_wav(&samples, sample_rate).map_err(|e| {
         log::error!("WAV encoding failed: {}", e);
         e.to_string()
     })?;

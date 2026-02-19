@@ -158,18 +158,32 @@ fn position_overlay(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
 
             let overlay_width = 420.0_f64;
             let overlay_height = 90.0_f64;
-            let bottom_margin = 48.0_f64;
+            // 68px above screen bottom clears the Dock on most Macs
+            let bottom_margin = 68.0_f64;
 
             let x = (logical_width / 2.0) - (overlay_width / 2.0);
             let y = logical_height - overlay_height - bottom_margin;
+
+            log::info!(
+                "Overlay position: x={:.0} y={:.0} (logical), monitor {}x{} @{}x",
+                x, y, logical_width, logical_height, scale
+            );
 
             window.set_position(tauri::PhysicalPosition {
                 x: (x * scale) as i32,
                 y: (y * scale) as i32,
             })?;
+        } else {
+            log::warn!("position_overlay: could not get primary monitor");
         }
 
         window.set_ignore_cursor_events(true)?;
+
+        // Show the overlay. focus:false in tauri.conf.json prevents it from becoming
+        // key after the initial startup (first show may grab focus briefly but
+        // the user's next click on their target app returns focus there).
+        window.show()?;
+        log::info!("Overlay window shown (click-through, always-on-top)");
     }
     Ok(())
 }

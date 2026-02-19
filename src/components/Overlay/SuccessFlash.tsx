@@ -1,48 +1,36 @@
 import { motion } from "framer-motion";
 
-interface SuccessFlashProps {
-  charCount: number;
-}
-
-export function SuccessFlash({ charCount }: SuccessFlashProps) {
+export function SuccessFlash() {
   return (
-    <div className="flex items-center gap-3">
-      {/* Checkmark */}
+    <div className="flex items-center gap-2.5">
+      {/* Checkmark circle */}
       <motion.div
-        className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20"
-        initial={{ scale: 0.5, opacity: 0 }}
+        className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/25 flex-shrink-0"
+        initial={{ scale: 0.4, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+        transition={{ type: "spring", stiffness: 500, damping: 18 }}
       >
-        <motion.svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <motion.path
-            d="M2 7l3.5 3.5L12 3"
-            stroke="#10b981"
-            strokeWidth="2"
+            d="M1.5 5l2.5 2.5L8.5 2"
+            stroke="#34d399"
+            strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+            transition={{ duration: 0.25, delay: 0.08 }}
           />
-        </motion.svg>
+        </svg>
       </motion.div>
 
       <motion.span
-        className="text-emerald-400 text-sm font-medium"
-        initial={{ opacity: 0, x: -4 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.15 }}
+        className="text-emerald-400 text-[13px] font-normal"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.12 }}
       >
-        {charCount} {charCount === 1 ? "character" : "characters"} injected
+        Done
       </motion.span>
     </div>
   );

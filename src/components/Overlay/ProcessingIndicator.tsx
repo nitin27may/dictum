@@ -3,36 +3,30 @@ import { motion } from "framer-motion";
 export function ProcessingIndicator() {
   return (
     <div className="flex items-center gap-3">
-      {/* Pulsing ring */}
-      <div className="relative flex items-center justify-center w-6 h-6">
-        <motion.div
-          className="absolute inset-0 rounded-full border-2 border-zinc-400"
-          animate={{ scale: [0.85, 1.15, 0.85], opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <div className="w-2 h-2 rounded-full bg-zinc-300" />
-      </div>
+      {/* Arc spinner */}
+      <div className="w-4 h-4 rounded-full border-[1.5px] border-white/20 border-t-white animate-spin flex-shrink-0" />
 
-      {/* Animated ellipsis */}
-      <span className="text-zinc-300 text-sm font-medium tracking-wide">
-        Processing
-        <AnimatedEllipsis />
+      {/* Label */}
+      <span className="text-white/80 text-[13px] font-normal tracking-wide">
+        Transcribing
+        <AnimatedDots />
       </span>
     </div>
   );
 }
 
-function AnimatedEllipsis() {
+function AnimatedDots() {
   return (
-    <span className="inline-flex">
+    <span className="inline-flex ml-0.5">
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          animate={{ opacity: [0, 1, 0] }}
+          className="text-white/50"
+          animate={{ opacity: [0.2, 1, 0.2] }}
           transition={{
-            duration: 1.2,
+            duration: 1.0,
             repeat: Infinity,
-            delay: i * 0.2,
+            delay: i * 0.18,
             ease: "easeInOut",
           }}
         >

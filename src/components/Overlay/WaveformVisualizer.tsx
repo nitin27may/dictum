@@ -1,35 +1,37 @@
 import { motion } from "framer-motion";
 
-const BAR_COUNT = 14;
-// Phase offsets for organic non-uniform movement
-const PHASE_OFFSETS = Array.from({ length: BAR_COUNT }, (_, i) =>
-  Math.sin((i / BAR_COUNT) * Math.PI * 2) * 0.5
-);
+// Bell curve envelope — center bar is tallest for a natural waveform shape
+const ENVELOPE = [0.35, 0.6, 0.82, 0.95, 1.0, 0.95, 0.82, 0.6, 0.35];
+// Symmetric spring delays so bars animate outward from center
+const DELAYS =   [0.04, 0.03, 0.02, 0.01, 0,    0.01, 0.02, 0.03, 0.04];
 
 interface WaveformVisualizerProps {
-  level: number; // 0–1
+  level: number; // 0–1, driven by RMS audio level
 }
 
 export function WaveformVisualizer({ level }: WaveformVisualizerProps) {
   return (
-    <div className="flex items-center gap-[3px] h-10">
-      {PHASE_OFFSETS.map((offset, i) => {
-        // Each bar gets slightly different height based on phase offset
-        const barLevel = Math.max(0.08, level * (0.6 + Math.abs(offset) * 0.8));
-        const heightPx = Math.round(4 + barLevel * 36); // 4–40px
+    <div className="flex items-center gap-[3px] h-7">
+      {ENVELOPE.map((env, i) => {
+        // Minimum height creates a subtle flat-line when silent
+        const amplitude = Math.max(0.12, level) * env;
+        const heightPx = Math.round(3 + amplitude * 24); // 3–27px
 
         return (
           <motion.div
             key={i}
-            className="w-[3px] rounded-full bg-gradient-to-t from-teal-400 to-blue-500 origin-center"
-            animate={{ height: heightPx }}
+            className="rounded-full bg-white"
+            style={{ width: 2.5, minHeight: 3 }}
+            animate={{
+              height: heightPx,
+              opacity: 0.55 + amplitude * 0.45,
+            }}
             transition={{
               type: "spring",
-              stiffness: 300,
-              damping: 20,
-              delay: offset * 0.02,
+              stiffness: 380,
+              damping: 22,
+              delay: DELAYS[i],
             }}
-            style={{ minHeight: 4 }}
           />
         );
       })}

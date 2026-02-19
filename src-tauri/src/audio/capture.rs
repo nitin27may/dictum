@@ -20,6 +20,7 @@ pub struct AudioCapture {
     buffer: Arc<Mutex<Vec<f32>>>,
     stream: Option<SendStream>,
     device_name: Option<String>,
+    actual_sample_rate: u32,
 }
 
 impl AudioCapture {
@@ -28,13 +29,19 @@ impl AudioCapture {
             buffer: Arc::new(Mutex::new(Vec::new())),
             stream: None,
             device_name,
+            actual_sample_rate: SAMPLE_RATE,
         }
     }
 
     pub fn start(&mut self, app_handle: AppHandle) -> Result<()> {
         let host = cpal::default_host();
         let device = self.find_device(&host)?;
-        let config = self.find_config(&device)?;
+        log::info!(
+            "Recording from device: \"{}\"",
+            device.name().unwrap_or_else(|_| "unknown".into())
+        );
+        let (config, sample_rate) = self.find_config(&device)?;
+        self.actual_sample_rate = sample_rate;
 
         let buffer = Arc::clone(&self.buffer);
         let buffer_for_level = Arc::clone(&self.buffer);
@@ -74,9 +81,10 @@ impl AudioCapture {
             if let Ok(buf) = buf_check.lock() {
                 if !buf.is_empty() {
                     let rms = compute_rms(&buf);
+                    log::info!("Audio RMS at 2s: {:.6}", rms);
                     if rms < 0.001 {
                         let _ = app_handle.emit("audio-silence-detected", ());
-                        log::warn!("Silence detected — mic may be muted or permission denied");
+                        log::warn!("Silence detected (RMS {:.6}) — mic may be muted or permission denied", rms);
                     }
                 }
             }
@@ -85,7 +93,8 @@ impl AudioCapture {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<Vec<f32>> {
+    /// Stops capture and returns (samples, sample_rate).
+    pub fn stop(&mut self) -> Result<(Vec<f32>, u32)> {
         self.stream.take(); // drop stream to stop capture
 
         let samples = self
@@ -95,7 +104,7 @@ impl AudioCapture {
             .drain(..)
             .collect();
 
-        Ok(samples)
+        Ok((samples, self.actual_sample_rate))
     }
 
     pub fn is_recording(&self) -> bool {
@@ -113,7 +122,7 @@ impl AudioCapture {
         }
     }
 
-    fn find_config(&self, device: &Device) -> Result<StreamConfig> {
+    fn find_config(&self, device: &Device) -> Result<(StreamConfig, u32)> {
         let supported = device.supported_input_configs()?;
         for range in supported {
             if range.channels() == CHANNELS
@@ -121,20 +130,25 @@ impl AudioCapture {
                 && range.min_sample_rate().0 <= SAMPLE_RATE
                 && range.max_sample_rate().0 >= SAMPLE_RATE
             {
-                return Ok(StreamConfig {
-                    channels: CHANNELS,
-                    sample_rate: cpal::SampleRate(SAMPLE_RATE),
-                    buffer_size: cpal::BufferSize::Default,
-                });
+                return Ok((
+                    StreamConfig {
+                        channels: CHANNELS,
+                        sample_rate: cpal::SampleRate(SAMPLE_RATE),
+                        buffer_size: cpal::BufferSize::Default,
+                    },
+                    SAMPLE_RATE,
+                ));
             }
         }
 
         let default = device.default_input_config()?;
+        let actual_rate = default.sample_rate().0;
         log::warn!(
-            "Could not find exact 16kHz mono f32 config; using default: {:?}",
-            default
+            "Could not find exact 16kHz mono f32 config; using default: {:?} ({}Hz)",
+            default,
+            actual_rate
         );
-        Ok(default.into())
+        Ok((default.into(), actual_rate))
     }
 }
 

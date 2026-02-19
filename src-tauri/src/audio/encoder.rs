@@ -2,16 +2,15 @@ use anyhow::Result;
 use hound::{WavSpec, WavWriter};
 use std::io::Cursor;
 
-const SAMPLE_RATE: u32 = 16_000;
 const CHANNELS: u16 = 1;
 const BITS_PER_SAMPLE: u16 = 16;
 
-/// Encodes f32 PCM samples to WAV bytes (16-bit PCM, 16kHz, mono).
-/// Whisper accepts WAV/MP3/MP4/WEBM; WAV is simplest with no external deps.
-pub fn encode_wav(samples: &[f32]) -> Result<Vec<u8>> {
+/// Encodes f32 PCM samples to WAV bytes (16-bit PCM, mono).
+/// sample_rate must match the actual capture rate — Whisper uses it to determine audio duration.
+pub fn encode_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
     let spec = WavSpec {
         channels: CHANNELS,
-        sample_rate: SAMPLE_RATE,
+        sample_rate,
         bits_per_sample: BITS_PER_SAMPLE,
         sample_format: hound::SampleFormat::Int,
     };
@@ -31,8 +30,8 @@ pub fn encode_wav(samples: &[f32]) -> Result<Vec<u8>> {
 }
 
 /// Returns approximate duration of the audio in seconds.
-pub fn samples_duration_secs(sample_count: usize) -> f32 {
-    sample_count as f32 / SAMPLE_RATE as f32
+pub fn samples_duration_secs(sample_count: usize, sample_rate: u32) -> f32 {
+    sample_count as f32 / sample_rate as f32
 }
 
 #[cfg(test)]
@@ -42,7 +41,7 @@ mod tests {
     #[test]
     fn encode_wav_produces_valid_header() {
         let samples: Vec<f32> = (0..16000).map(|i| (i as f32 / 16000.0).sin()).collect();
-        let wav_bytes = encode_wav(&samples).unwrap();
+        let wav_bytes = encode_wav(&samples, 16_000).unwrap();
         // WAV files start with "RIFF"
         assert_eq!(&wav_bytes[0..4], b"RIFF");
         assert_eq!(&wav_bytes[8..12], b"WAVE");
@@ -51,7 +50,7 @@ mod tests {
     #[test]
     fn encode_wav_clamps_out_of_range_samples() {
         let samples = vec![2.0f32, -2.0f32, 0.5f32];
-        let result = encode_wav(&samples);
+        let result = encode_wav(&samples, 48_000);
         assert!(result.is_ok());
     }
 }

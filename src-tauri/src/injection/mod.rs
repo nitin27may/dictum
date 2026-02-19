@@ -6,6 +6,13 @@ pub mod windows;
 
 use anyhow::Result;
 
+/// Deletes the character before the cursor (removes the Option+Space non-breaking space).
+/// No-op on platforms where this isn't implemented.
+pub fn delete_preceding_char() {
+    #[cfg(target_os = "macos")]
+    macos::delete_preceding_char();
+}
+
 pub async fn inject_text(text: &str) -> Result<()> {
     #[cfg(target_os = "macos")]
     {

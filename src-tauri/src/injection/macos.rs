@@ -1,44 +1,30 @@
 use anyhow::{anyhow, Result};
 use std::process::Command;
 
-/// Injects text at the current cursor position using clipboard + Cmd+V paste.
+/// Injects text at the current cursor position.
 ///
 /// Flow:
-///   1. Save current clipboard content
-///   2. Set clipboard to the transcribed text
-///   3. Send Cmd+V to the focused application
-///   4. Wait 500ms, then restore original clipboard
-///
-/// Known quirk: if the user pastes within the 500ms window,
-/// they receive the transcription text instead of their original clipboard.
+///   1. Backspace — removes the non-breaking space macOS types when Option+Space fires
+///   2. Set clipboard to transcribed text
+///   3. Cmd+V to paste into frontmost application
 pub async fn inject_text(text: &str) -> Result<()> {
-    // 1. Save current clipboard
-    let saved = get_clipboard()?;
+    // 1. Remove the non-breaking space that Option+Space types in the frontmost app.
+    //    This fires here (not in on_press) to ensure the correct target app has focus —
+    //    the overlay briefly gains focus at startup and on_press would misfire the backspace.
+    delete_preceding_char();
 
-    // 2. Set clipboard to transcription
+    // 2. Brief pause so the backspace processes before the paste
+    tokio::time::sleep(tokio::time::Duration::from_millis(60)).await;
+
+    // 3. Set clipboard and paste.
+    //    Note: clipboard save/restore is intentionally omitted — it can trigger
+    //    clipboard managers (Alfred, Paste, etc.) which cause a second paste.
     set_clipboard(text)?;
-
-    // 3. Send Cmd+V via AppleScript
     send_paste()?;
-
-    // 4. Restore clipboard after delay
-    let saved_clone = saved.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        if let Err(e) = restore_clipboard(&saved_clone) {
-            log::warn!("Failed to restore clipboard: {}", e);
-        }
-    });
 
     Ok(())
 }
 
-fn get_clipboard() -> Result<String> {
-    let output = Command::new("pbpaste")
-        .output()
-        .map_err(|e| anyhow!("pbpaste failed: {}", e))?;
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
 
 fn set_clipboard(text: &str) -> Result<()> {
     use std::io::Write;
@@ -80,8 +66,17 @@ fn send_paste() -> Result<()> {
     Ok(())
 }
 
-fn restore_clipboard(content: &str) -> Result<()> {
-    set_clipboard(content)
+/// Sends a single Backspace keystroke to the frontmost application.
+///
+/// Called at the start of recording to undo the non-breaking space that macOS inserts
+/// when Option+Space fires via a passive NSEvent monitor (which doesn't consume the event).
+pub fn delete_preceding_char() {
+    let _ = Command::new("osascript")
+        .arg("-e")
+        .arg(r#"tell application "System Events" to key code 51"#) // key code 51 = Delete/Backspace
+        .status();
+    // Errors are silently ignored — if accessibility is not granted, the backspace
+    // simply won't fire, which is harmless.
 }
 
 /// Check if the app has Accessibility permission (required for osascript keystroke).

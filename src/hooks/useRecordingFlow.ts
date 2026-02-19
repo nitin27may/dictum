@@ -7,7 +7,6 @@
  */
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { useRecordingStore } from "../store/recordingStore";
 
@@ -23,6 +22,7 @@ export function useRecordingFlow() {
 
       unlisteners.push(
         await win.listen("recording-started", () => {
+          console.log("[overlay] recording-started received");
           if (!mounted) return;
           store.startRecording();
         })
@@ -54,17 +54,15 @@ export function useRecordingFlow() {
         await win.listen<string>("recording-error", (e) => {
           if (!mounted) return;
           store.setError(e.payload);
-          // hide + reset handled by Rust after delay
+          // Overlay.tsx auto-resets to IDLE after 1500ms
         })
       );
 
-      // Auto-reset store when overlay window is hidden
+      // Short tap (< 200ms) — cancelled before recording accumulated
       unlisteners.push(
-        await win.listen("tauri://blur", () => {
+        await win.listen("recording-cancelled", () => {
           if (!mounted) return;
-          setTimeout(() => {
-            if (mounted) store.reset();
-          }, 100);
+          store.reset();
         })
       );
     };
