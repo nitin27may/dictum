@@ -48,6 +48,10 @@ export async function registerHotkey(shortcut: string): Promise<void> {
   await invoke("register_hotkey", { shortcut });
 }
 
+export async function unregisterHotkeys(): Promise<void> {
+  await invoke("unregister_hotkeys");
+}
+
 export async function getPlatform(): Promise<string> {
   return invoke<string>("get_platform");
 }

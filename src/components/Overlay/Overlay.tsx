@@ -10,7 +10,7 @@ import { WaveformVisualizer } from "./WaveformVisualizer";
 
 export function Overlay() {
   const { phase } = useRecordingFlow();
-  const { audioLevel, durationSecs, error } = useRecordingStore();
+  const { audioLevel, durationSecs, error, processingLabel } = useRecordingStore();
   const reset = useRecordingStore((s) => s.reset);
 
   useAudioLevels(phase === "RECORDING");
@@ -96,7 +96,7 @@ export function Overlay() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.12 }}
                 >
-                  <ProcessingIndicator />
+                  <ProcessingIndicator label={processingLabel} />
                 </motion.div>
               )}
 

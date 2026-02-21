@@ -26,6 +26,16 @@ export function ApiConfigSection() {
     setTestResult(null);
   };
 
+  const smartKeywords = api.smartKeywords ?? { enabled: false };
+
+  const handleSmartKeywordsToggle = (enabled: boolean) => {
+    save({ api: { ...api, smartKeywords: { ...smartKeywords, enabled } } });
+  };
+
+  const handleOpenAIGptModelChange = (model: string) => {
+    save({ api: { ...api, openai: { ...api.openai, gptModel: model } } });
+  };
+
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
@@ -136,6 +146,62 @@ export function ApiConfigSection() {
           </Field>
         </div>
       )}
+
+      {/* Smart Keywords */}
+      <div className="border-t border-zinc-800 pt-5">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              Smart Keywords
+            </label>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Say "rephrase" at the end to have GPT improve the text
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={smartKeywords.enabled}
+            onClick={() => handleSmartKeywordsToggle(!smartKeywords.enabled)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              smartKeywords.enabled ? "bg-teal-600" : "bg-zinc-700"
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                smartKeywords.enabled ? "translate-x-[18px]" : "translate-x-[3px]"
+              }`}
+            />
+          </button>
+        </div>
+
+        {smartKeywords.enabled && (
+          <div className="mt-3 space-y-3">
+            {provider === "openai" && (
+              <Field label="GPT Model">
+                <input
+                  type="text"
+                  value={api.openai.gptModel ?? "gpt-4o-mini"}
+                  onChange={(e) => handleOpenAIGptModelChange(e.target.value)}
+                  placeholder="gpt-4o-mini"
+                  className="input-field"
+                />
+              </Field>
+            )}
+            {provider === "azure" && (
+              <Field label="GPT Deployment">
+                <input
+                  type="text"
+                  value={api.azure.gptDeployment}
+                  onChange={(e) => handleAzureFieldChange("gptDeployment", e.target.value)}
+                  placeholder="gpt-4o-mini"
+                  className="input-field"
+                />
+              </Field>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Test button */}
       <div className="flex items-center gap-4 pt-1">

@@ -15,10 +15,11 @@ export const useRecordingStore = create<RecordingStore>((set) => ({
       charCount: 0,
     }),
 
-  setProcessing: () =>
+  setProcessing: (label?: string) =>
     set({
       phase: "PROCESSING",
       audioLevel: 0,
+      processingLabel: label ?? "Transcribing",
     }),
 
   setSuccess: (text: string) =>

@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 import { DEFAULT_SETTINGS, Settings, SettingsSchema } from "../types/settings";
 
@@ -58,12 +57,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       const store = await getTauriStore();
       await store.set("settings", parsed.data);
       await store.save();
-      // Keep Rust in sync — merge env var fallback for API key
-      const apiConfig = { ...parsed.data.api };
-      if (!apiConfig.openai.apiKey && (import.meta.env.VITE_OPENAI_API_KEY as string)) {
-        apiConfig.openai = { ...apiConfig.openai, apiKey: import.meta.env.VITE_OPENAI_API_KEY as string };
-      }
-      invoke("set_api_config", { config: apiConfig }).catch(console.error);
+      // Rust sync is handled by App.tsx useEffect reacting to api config changes
     } catch (err) {
       console.error("Failed to persist settings:", err);
     }

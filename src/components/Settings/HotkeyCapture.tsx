@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { unregisterHotkeys, registerHotkey } from "../../services/tauri-bridge";
 
 interface HotkeyCaptureProps {
   value: string;
@@ -10,6 +11,16 @@ export function HotkeyCapture({ value, onChange, disabled }: HotkeyCaptureProps)
   const [isCapturing, setIsCapturing] = useState(false);
   const [captured, setCaptured] = useState<string[]>([]);
   const ref = useRef<HTMLButtonElement>(null);
+  const prevHotkeyRef = useRef(value);
+
+  // Unregister global shortcut when entering capture mode,
+  // re-register previous hotkey if capture is cancelled (blur without commit).
+  useEffect(() => {
+    if (isCapturing) {
+      prevHotkeyRef.current = value;
+      unregisterHotkeys().catch(console.error);
+    }
+  }, [isCapturing]);
 
   useEffect(() => {
     if (!isCapturing) return;
@@ -25,7 +36,9 @@ export function HotkeyCapture({ value, onChange, disabled }: HotkeyCaptureProps)
 
       const key = e.key;
       if (!["Meta", "Control", "Alt", "Shift"].includes(key)) {
-        parts.push(key === " " ? "Space" : key);
+        // Capitalize key name for Tauri shortcut parser compatibility
+        const keyName = key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
+        parts.push(keyName);
       }
 
       setCaptured(parts);
@@ -41,9 +54,9 @@ export function HotkeyCapture({ value, onChange, disabled }: HotkeyCaptureProps)
 
       if (nonModifiers.length > 0) {
         const hotkey = captured.join("+");
-        onChange(hotkey);
         setIsCapturing(false);
         setCaptured([]);
+        onChange(hotkey);
       }
     };
 
@@ -55,6 +68,15 @@ export function HotkeyCapture({ value, onChange, disabled }: HotkeyCaptureProps)
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [isCapturing, captured, onChange]);
+
+  const handleBlur = () => {
+    if (isCapturing) {
+      setIsCapturing(false);
+      setCaptured([]);
+      // Re-register the previous hotkey since capture was cancelled
+      registerHotkey(prevHotkeyRef.current).catch(console.error);
+    }
+  };
 
   const displayValue = isCapturing
     ? captured.length > 0
@@ -72,10 +94,7 @@ export function HotkeyCapture({ value, onChange, disabled }: HotkeyCaptureProps)
         setCaptured([]);
         ref.current?.focus();
       }}
-      onBlur={() => {
-        setIsCapturing(false);
-        setCaptured([]);
-      }}
+      onBlur={handleBlur}
       className={`
         px-4 py-2 rounded-md font-mono text-sm border transition-all min-w-32 text-left
         ${isCapturing

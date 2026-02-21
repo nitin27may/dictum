@@ -7,13 +7,46 @@ pub async fn register_hotkey(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    crate::hotkey::unregister_all(&app).map_err(|e| e.to_string())?;
-    crate::hotkey::register_hotkey(&app, &shortcut).map_err(|e| {
-        log::error!("Failed to register hotkey '{}': {}", shortcut, e);
-        e.to_string()
-    })?;
+    // CRITICAL: macOS requires global shortcuts to be registered on the main thread.
+    // Tauri async commands run on a thread pool, so we dispatch to main via channel.
+    let shortcut_clone = shortcut.clone();
+    let app_clone = app.clone();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
 
+    app.run_on_main_thread(move || {
+        let result = (|| {
+            crate::hotkey::unregister_all(&app_clone).map_err(|e| e.to_string())?;
+            crate::hotkey::register_hotkey(&app_clone, &shortcut_clone).map_err(|e| {
+                log::error!("Failed to register hotkey '{}': {}", shortcut_clone, e);
+                e.to_string()
+            })?;
+            Ok(())
+        })();
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|_| "Main thread channel closed".to_string())??;
+
+    log::info!("Hotkey changed to: {}", shortcut);
     *state.current_hotkey.lock().await = shortcut;
+    Ok(())
+}
+
+/// Temporarily unregisters all shortcuts (used during hotkey capture in Settings).
+#[tauri::command]
+pub async fn unregister_hotkeys(app: AppHandle) -> Result<(), String> {
+    let app_clone = app.clone();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+
+    app.run_on_main_thread(move || {
+        let result = crate::hotkey::unregister_all(&app_clone).map_err(|e| e.to_string());
+        let _ = tx.send(result);
+    })
+    .map_err(|e| e.to_string())?;
+
+    rx.await.map_err(|_| "Main thread channel closed".to_string())??;
+    log::info!("All hotkeys unregistered (capture mode)");
     Ok(())
 }
 

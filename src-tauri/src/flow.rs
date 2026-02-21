@@ -122,7 +122,7 @@ pub async fn on_release(app: AppHandle, state: AppState) {
     // Read API config from AppState (pushed by JS on startup / settings change)
     let config = state.api_config.lock().await.clone();
 
-    match transcribe(wav_bytes, config).await {
+    match transcribe(wav_bytes, &config).await {
         Ok(text) => {
             let text = text.trim().to_string();
             log::info!("Transcription: \"{}\"", text);
@@ -132,9 +132,39 @@ pub async fn on_release(app: AppHandle, state: AppState) {
                 return;
             }
 
-            let char_count = text.len();
+            // Smart keywords: check for trailing "rephrase" / "rewrite" trigger
+            let smart_enabled = config["smartKeywords"]["enabled"].as_bool().unwrap_or(false);
+            let final_text = if smart_enabled {
+                if let Some(kw) = crate::keywords::detect_keyword(&text) {
+                    log::info!("Keyword detected: action='{}', clean_text='{}'", kw.action, kw.clean_text);
+                    emit_overlay(&app, "processing-gpt", ());
 
-            if let Err(e) = crate::injection::inject_text(&text).await {
+                    match rephrase(&kw.clean_text, &kw.action, &config).await {
+                        Ok(rephrased) => {
+                            let rephrased = rephrased.trim().to_string();
+                            if rephrased.is_empty() {
+                                log::warn!("GPT returned empty, falling back to clean text");
+                                kw.clean_text
+                            } else {
+                                log::info!("Rephrased: \"{}\"", rephrased);
+                                rephrased
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("GPT rephrase failed: {}, falling back to clean text", e);
+                            kw.clean_text
+                        }
+                    }
+                } else {
+                    text
+                }
+            } else {
+                text
+            };
+
+            let char_count = final_text.len();
+
+            if let Err(e) = crate::injection::inject_text(&final_text).await {
                 log::error!("Text injection failed: {}", e);
                 emit_overlay(&app, "recording-error", format!("Injection failed: {e}"));
                 return;
@@ -151,13 +181,13 @@ pub async fn on_release(app: AppHandle, state: AppState) {
 
 // ── Transcription ─────────────────────────────────────────────────────────────
 
-async fn transcribe(wav_bytes: Vec<u8>, config: Value) -> Result<String> {
+async fn transcribe(wav_bytes: Vec<u8>, config: &Value) -> Result<String> {
     let provider = config["provider"].as_str().unwrap_or("openai");
 
     if provider == "azure" {
-        transcribe_azure(wav_bytes, &config).await
+        transcribe_azure(wav_bytes, config).await
     } else {
-        transcribe_openai(wav_bytes, &config).await
+        transcribe_openai(wav_bytes, config).await
     }
 }
 
@@ -279,6 +309,154 @@ async fn transcribe_azure(wav_bytes: Vec<u8>, config: &Value) -> Result<String> 
         .as_str()
         .map(|s| s.to_string())
         .ok_or_else(|| anyhow!("No text field in Azure response"))
+}
+
+// ── GPT Rephrase ──────────────────────────────────────────────────────────────
+
+fn build_system_prompt(action: &str) -> String {
+    match action {
+        "rephrase" => concat!(
+            "You are a writing assistant. The user will give you text that was transcribed from speech. ",
+            "Your job:\n",
+            "1. Infer the context from the text itself (email, chat message, code comment, professional note, etc.)\n",
+            "2. Rephrase the text to be clear, well-written, and appropriate for the inferred context\n",
+            "3. Fix any grammar issues typical of speech-to-text transcription\n",
+            "4. Preserve the original meaning and approximate length\n",
+            "5. Return ONLY the rephrased text — no explanations, labels, or formatting"
+        ).to_string(),
+        _ => "Rephrase the following text clearly and concisely. Return ONLY the result.".to_string(),
+    }
+}
+
+async fn rephrase(text: &str, action: &str, config: &Value) -> Result<String> {
+    let provider = config["provider"].as_str().unwrap_or("openai");
+
+    if provider == "azure" {
+        rephrase_azure(text, action, config).await
+    } else {
+        rephrase_openai(text, action, config).await
+    }
+}
+
+async fn rephrase_openai(text: &str, action: &str, config: &Value) -> Result<String> {
+    let api_key = config["openai"]["apiKey"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or_else(|| anyhow!("OpenAI API key not configured"))?;
+
+    let base_url = config["openai"]["baseUrl"]
+        .as_str()
+        .unwrap_or("https://api.openai.com");
+
+    let model = config["openai"]["gptModel"]
+        .as_str()
+        .unwrap_or("gpt-4o-mini");
+
+    let url = format!("{}/v1/chat/completions", base_url.trim_end_matches('/'));
+
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [
+            { "role": "system", "content": build_system_prompt(action) },
+            { "role": "user", "content": text }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 2048
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?;
+
+    let resp = client
+        .post(&url)
+        .bearer_auth(api_key)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| anyhow!("GPT request failed: {}", e))?;
+
+    let status = resp.status();
+    let resp_body: Value = resp
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse GPT response: {}", e))?;
+
+    if !status.is_success() {
+        let msg = resp_body["error"]["message"]
+            .as_str()
+            .unwrap_or("Unknown GPT API error");
+        return Err(anyhow!("OpenAI GPT error {}: {}", status, msg));
+    }
+
+    resp_body["choices"][0]["message"]["content"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| anyhow!("No content in GPT response"))
+}
+
+async fn rephrase_azure(text: &str, action: &str, config: &Value) -> Result<String> {
+    let endpoint = config["azure"]["endpoint"]
+        .as_str()
+        .ok_or_else(|| anyhow!("Azure endpoint not configured"))?
+        .trim_end_matches('/');
+
+    let api_key = config["azure"]["apiKey"]
+        .as_str()
+        .ok_or_else(|| anyhow!("Azure API key not configured"))?;
+
+    let deployment = config["azure"]["gptDeployment"]
+        .as_str()
+        .unwrap_or("gpt-4o-mini");
+
+    let api_version = config["azure"]["apiVersion"]
+        .as_str()
+        .unwrap_or("2024-02-01");
+
+    let url = format!(
+        "{}/openai/deployments/{}/chat/completions?api-version={}",
+        endpoint, deployment, api_version
+    );
+
+    let body = serde_json::json!({
+        "messages": [
+            { "role": "system", "content": build_system_prompt(action) },
+            { "role": "user", "content": text }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 2048
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?;
+
+    let resp = client
+        .post(&url)
+        .header("api-key", api_key)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| anyhow!("GPT request failed: {}", e))?;
+
+    let status = resp.status();
+    let resp_body: Value = resp
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse GPT response: {}", e))?;
+
+    if !status.is_success() {
+        let msg = resp_body["error"]["message"]
+            .as_str()
+            .unwrap_or("Unknown GPT API error");
+        return Err(anyhow!("Azure GPT error {}: {}", status, msg));
+    }
+
+    resp_body["choices"][0]["message"]["content"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| anyhow!("No content in Azure GPT response"))
 }
 
 // ── Window helpers ─────────────────────────────────────────────────────────────

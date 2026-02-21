@@ -38,7 +38,14 @@ export function useRecordingFlow() {
       unlisteners.push(
         await win.listen("processing-started", () => {
           if (!mounted) return;
-          store.setProcessing();
+          store.setProcessing("Transcribing");
+        })
+      );
+
+      unlisteners.push(
+        await win.listen("processing-gpt", () => {
+          if (!mounted) return;
+          store.setProcessing("Rephrasing");
         })
       );
 

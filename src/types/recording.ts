@@ -13,11 +13,12 @@ export interface RecordingState {
   lastTranscription: string | null;
   error: string | null;
   charCount: number;
+  processingLabel: string;
 }
 
 export interface RecordingStore extends RecordingState {
   startRecording: () => void;
-  setProcessing: () => void;
+  setProcessing: (label?: string) => void;
   setSuccess: (text: string) => void;
   setError: (message: string) => void;
   reset: () => void;
@@ -33,4 +34,5 @@ export const INITIAL_RECORDING_STATE: RecordingState = {
   lastTranscription: null,
   error: null,
   charCount: 0,
+  processingLabel: "Transcribing",
 };

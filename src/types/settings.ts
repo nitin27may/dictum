@@ -6,6 +6,7 @@ export const ApiConfigSchema = z.object({
     .object({
       apiKey: z.string().optional(),
       whisperModel: z.string().default("whisper-1"),
+      gptModel: z.string().default("gpt-4o-mini"),
       baseUrl: z.string().optional(), // for custom proxies
     })
     .default({}),
@@ -16,6 +17,11 @@ export const ApiConfigSchema = z.object({
       whisperDeployment: z.string().default("whisper"),
       gptDeployment: z.string().default("gpt-4o-mini"),
       apiVersion: z.string().default("2024-02-01"),
+    })
+    .default({}),
+  smartKeywords: z
+    .object({
+      enabled: z.boolean().default(false),
     })
     .default({}),
 });

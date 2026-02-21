@@ -3,6 +3,7 @@ pub mod commands;
 pub mod flow;
 pub mod hotkey;
 pub mod injection;
+pub mod keywords;
 
 use audio::capture::AudioCapture;
 use commands::{
@@ -11,7 +12,7 @@ use commands::{
         start_recording, stop_recording,
     },
     injection_commands::{check_accessibility_permission, inject_text},
-    settings_commands::{get_current_hotkey, get_platform, register_hotkey, set_api_config},
+    settings_commands::{get_current_hotkey, get_platform, register_hotkey, set_api_config, unregister_hotkeys},
 };
 use std::sync::Arc;
 use std::time::Instant;
@@ -99,6 +100,7 @@ pub fn run() {
             check_microphone_permission,
             request_microphone_permission,
             register_hotkey,
+            unregister_hotkeys,
             get_platform,
             get_current_hotkey,
             set_api_config,

@@ -1,6 +1,10 @@
 import { motion } from "framer-motion";
 
-export function ProcessingIndicator() {
+interface ProcessingIndicatorProps {
+  label?: string;
+}
+
+export function ProcessingIndicator({ label = "Transcribing" }: ProcessingIndicatorProps) {
   return (
     <div className="flex items-center gap-3">
       {/* Arc spinner */}
@@ -8,7 +12,7 @@ export function ProcessingIndicator() {
 
       {/* Label */}
       <span className="text-white/80 text-[13px] font-normal tracking-wide">
-        Transcribing
+        {label}
         <AnimatedDots />
       </span>
     </div>
