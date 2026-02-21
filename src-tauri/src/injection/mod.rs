@@ -28,6 +28,23 @@ pub async fn inject_text(text: &str) -> Result<()> {
     }
 }
 
+/// Replays a single-key shortcut that was consumed by the global shortcut handler.
+/// Only acts on single keys (no modifiers). Used for tap-through on short presses.
+pub fn replay_shortcut_key(shortcut: &str) {
+    // Only replay if there are no modifiers (single key like "Space")
+    if shortcut.contains('+') {
+        return;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(keycode) = macos::key_name_to_keycode(shortcut) {
+            log::debug!("Replaying consumed key tap: {} (keycode {})", shortcut, keycode);
+            macos::simulate_key_tap(keycode);
+        }
+    }
+}
+
 pub fn check_accessibility_permission() -> bool {
     #[cfg(target_os = "macos")]
     {

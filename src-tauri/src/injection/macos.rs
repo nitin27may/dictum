@@ -79,6 +79,38 @@ pub fn delete_preceding_char() {
     // simply won't fire, which is harmless.
 }
 
+/// Simulates a key tap via AppleScript (System Events).
+/// This injects at the application level, bypassing the global shortcut handler
+/// so the replayed key actually reaches the target app instead of being consumed.
+pub fn simulate_key_tap(keycode: u16) {
+    let script = format!(
+        r#"tell application "System Events" to key code {}"#,
+        keycode
+    );
+    let _ = Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .status();
+}
+
+/// Maps a Tauri shortcut key name to a macOS CGEvent keycode.
+/// Returns None for keys that shouldn't be replayed (modifiers, unknown keys).
+pub fn key_name_to_keycode(key: &str) -> Option<u16> {
+    match key.to_lowercase().as_str() {
+        "space" => Some(49),
+        "tab" => Some(48),
+        "return" | "enter" => Some(36),
+        "a" => Some(0), "b" => Some(11), "c" => Some(8), "d" => Some(2),
+        "e" => Some(14), "f" => Some(3), "g" => Some(5), "h" => Some(4),
+        "i" => Some(34), "j" => Some(38), "k" => Some(40), "l" => Some(37),
+        "m" => Some(46), "n" => Some(45), "o" => Some(31), "p" => Some(35),
+        "q" => Some(12), "r" => Some(15), "s" => Some(1), "t" => Some(17),
+        "u" => Some(32), "v" => Some(9), "w" => Some(13), "x" => Some(7),
+        "y" => Some(16), "z" => Some(6),
+        _ => None,
+    }
+}
+
 /// Check if the app has Accessibility permission (required for osascript keystroke).
 pub fn check_accessibility_permission() -> bool {
     let output = Command::new("osascript")

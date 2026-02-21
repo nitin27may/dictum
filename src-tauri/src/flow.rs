@@ -19,8 +19,17 @@ use tauri::{AppHandle, Emitter, Manager};
 const MIN_HOLD_MS: u128 = 200;
 const MAX_RECORD_SECS: u64 = 60;
 
-/// Called on hotkey press. Starts cpal capture and drives the overlay via events.
+/// Called on hotkey press.
+/// Waits for MIN_HOLD_MS before starting mic capture. If the key is released
+/// before the threshold, the keypress is replayed (tap-through) and no
+/// recording occurs. This prevents single-key hotkeys like Space from
+/// blocking normal typing.
 pub async fn on_press(app: AppHandle, state: AppState) {
+    // Ignore events from our own key replay
+    if state.is_replaying.load(std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+
     // Re-entrancy guard
     {
         let mut down = state.is_recording.lock().await;
@@ -32,6 +41,14 @@ pub async fn on_press(app: AppHandle, state: AppState) {
 
     let start_time = Instant::now();
     *state.pressed_at.lock().await = Some(start_time);
+
+    // Wait for hold threshold before starting the mic
+    tokio::time::sleep(Duration::from_millis(MIN_HOLD_MS as u64)).await;
+
+    // Check if key was already released during the wait (tap)
+    if !*state.is_recording.lock().await {
+        return; // on_release already ran and handled the tap-through
+    }
 
     emit_overlay(&app, "recording-started", ());
 
@@ -67,11 +84,28 @@ pub async fn on_press(app: AppHandle, state: AppState) {
 /// Called on hotkey release. Stops capture, transcribes, injects text.
 pub async fn on_release(app: AppHandle, state: AppState) {
     let pressed_at = state.pressed_at.lock().await.take();
-    *state.is_recording.lock().await = false;
+    let was_recording = {
+        let mut r = state.is_recording.lock().await;
+        let v = *r;
+        *r = false;
+        v
+    };
+
+    if !was_recording {
+        return; // Already handled
+    }
 
     let hold_ms = pressed_at
         .map(|t| t.elapsed().as_millis())
         .unwrap_or(0);
+
+    // Tap too short — mic never started, replay the consumed keypress
+    if hold_ms < MIN_HOLD_MS {
+        let hotkey = state.current_hotkey.lock().await.clone();
+        crate::injection::replay_shortcut_key(&hotkey);
+        log::debug!("Short tap ({}ms), replayed key: {}", hold_ms, hotkey);
+        return;
+    }
 
     let (samples, sample_rate) = {
         let mut capture = state.audio_capture.lock().await;
@@ -87,12 +121,6 @@ pub async fn on_release(app: AppHandle, state: AppState) {
             }
         }
     };
-
-    // Tap too short — ignore silently
-    if hold_ms < MIN_HOLD_MS {
-        emit_overlay(&app, "recording-cancelled", ());
-        return;
-    }
 
     if samples.is_empty() {
         emit_overlay(&app, "recording-error", "No audio captured".to_string());

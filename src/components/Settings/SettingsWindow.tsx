@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { registerHotkey } from "../../services/tauri-bridge";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ApiConfigSection } from "./ApiConfigSection";
@@ -10,10 +11,15 @@ export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { settings, save, isLoaded, load } = useSettingsStore();
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
+  const [autostart, setAutostart] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) load();
   }, [isLoaded, load]);
+
+  useEffect(() => {
+    isEnabled().then(setAutostart).catch(console.error);
+  }, []);
 
   const handleHotkeyChange = async (hotkey: string) => {
     setHotkeyError(null);
@@ -95,6 +101,42 @@ export function SettingsWindow() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </Section>
+
+            <Section title="Startup">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-zinc-300">Launch at login</span>
+                  <p className="text-xs text-zinc-500 mt-0.5">Start Wisper automatically when you log in</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autostart}
+                  onClick={async () => {
+                    try {
+                      if (autostart) {
+                        await disable();
+                        setAutostart(false);
+                      } else {
+                        await enable();
+                        setAutostart(true);
+                      }
+                    } catch (err) {
+                      console.error("Autostart toggle failed:", err);
+                    }
+                  }}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    autostart ? "bg-teal-600" : "bg-zinc-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                      autostart ? "translate-x-[18px]" : "translate-x-[3px]"
+                    }`}
+                  />
+                </button>
               </div>
             </Section>
 

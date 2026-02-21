@@ -14,6 +14,7 @@ use commands::{
     injection_commands::{check_accessibility_permission, inject_text},
     settings_commands::{get_current_hotkey, get_platform, register_hotkey, set_api_config, unregister_hotkeys},
 };
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Instant;
 use tauri::{
@@ -34,6 +35,9 @@ pub struct AppState {
     pub pressed_at: Arc<Mutex<Option<Instant>>>,
     /// API config pushed from JS on startup / settings change
     pub api_config: Arc<Mutex<serde_json::Value>>,
+    /// True while replaying a consumed keypress — prevents the replayed
+    /// CGEvent from retriggering the global shortcut handler.
+    pub is_replaying: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -48,6 +52,7 @@ impl AppState {
                 "openai": { "whisperModel": "whisper-1" },
                 "azure": {}
             }))),
+            is_replaying: Arc::new(AtomicBool::new(false)),
         }
     }
 }
@@ -60,6 +65,7 @@ impl Clone for AppState {
             is_recording: Arc::clone(&self.is_recording),
             pressed_at: Arc::clone(&self.pressed_at),
             api_config: Arc::clone(&self.api_config),
+            is_replaying: Arc::clone(&self.is_replaying),
         }
     }
 }
@@ -90,6 +96,10 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             start_recording,
