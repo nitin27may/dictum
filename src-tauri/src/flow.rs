@@ -160,14 +160,18 @@ pub async fn on_release(app: AppHandle, state: AppState) {
                 return;
             }
 
-            // Smart keywords: check for trailing "rephrase" / "rewrite" trigger
+            // Smart keywords: check for trigger phrases anywhere in the text
             let smart_enabled = config["smartKeywords"]["enabled"].as_bool().unwrap_or(false);
+            log::info!("Smart keywords enabled: {} (raw: {})", smart_enabled, config["smartKeywords"]["enabled"]);
             let final_text = if smart_enabled {
                 if let Some(kw) = crate::keywords::detect_keyword(&text) {
-                    log::info!("Keyword detected: action='{}', clean_text='{}'", kw.action, kw.clean_text);
+                    log::info!(
+                        "Keyword detected: action='{}', format={:?}, clean_text='{}'",
+                        kw.action, kw.format, kw.clean_text
+                    );
                     emit_overlay(&app, "processing-gpt", ());
 
-                    match rephrase(&kw.clean_text, &kw.action, &config).await {
+                    match rephrase(&kw.clean_text, &kw.action, kw.format.as_deref(), &config).await {
                         Ok(rephrased) => {
                             let rephrased = rephrased.trim().to_string();
                             if rephrased.is_empty() {
@@ -341,32 +345,111 @@ async fn transcribe_azure(wav_bytes: Vec<u8>, config: &Value) -> Result<String> 
 
 // ── GPT Rephrase ──────────────────────────────────────────────────────────────
 
-fn build_system_prompt(action: &str) -> String {
-    match action {
-        "rephrase" => concat!(
-            "You are a writing assistant. The user will give you text that was transcribed from speech. ",
-            "Your job:\n",
-            "1. Infer the context from the text itself (email, chat message, code comment, professional note, etc.)\n",
-            "2. Rephrase the text to be clear, well-written, and appropriate for the inferred context\n",
-            "3. Fix any grammar issues typical of speech-to-text transcription\n",
-            "4. Preserve the original meaning and approximate length\n",
-            "5. Return ONLY the rephrased text — no explanations, labels, or formatting"
+fn build_system_prompt(action: &str, format: Option<&str>) -> String {
+    match (action, format) {
+        ("rephrase", Some(fmt)) => format!(
+            "You are a writing assistant that rewrites speech-to-text transcriptions.\n\n\
+            TASK: Rewrite the user's transcribed text as a properly formatted {fmt}.\n\n\
+            CRITICAL RULES:\n\
+            - Actually REWRITE the text — don't just clean it up. Improve word choice, sentence structure, and flow.\n\
+            - Use REAL LINE BREAKS (newline characters) to separate paragraphs, greeting, body, and sign-off.\n\
+            - Apply the full structure and layout expected for a {fmt}.\n\
+            - Fix grammar issues from speech-to-text.\n\
+            - Preserve the original meaning and intent.\n\
+            - Return ONLY the formatted result. No explanations, no labels, no \"Here's the email:\" prefix.\n\n\
+            FORMAT RULES FOR {fmt_upper}:\n{guidelines}",
+            fmt = fmt,
+            fmt_upper = fmt.to_uppercase(),
+            guidelines = format_guidelines(fmt),
+        ),
+        ("rephrase", None) => concat!(
+            "You are a writing assistant that rewrites speech-to-text transcriptions.\n\n",
+            "TASK: Rewrite the user's transcribed text to be clear, professional, and well-written.\n\n",
+            "CRITICAL RULES:\n",
+            "- Actually REWRITE the text — don't just clean it up. Improve word choice, sentence structure, and flow.\n",
+            "- Infer the context (email, chat, note, etc.) and apply appropriate formatting.\n",
+            "- Use REAL LINE BREAKS (newline characters) to separate paragraphs where appropriate.\n",
+            "- Fix grammar issues from speech-to-text.\n",
+            "- Preserve the original meaning.\n",
+            "- Return ONLY the rewritten text. No explanations, no labels, no meta-commentary."
         ).to_string(),
-        _ => "Rephrase the following text clearly and concisely. Return ONLY the result.".to_string(),
+        _ => "Rewrite the following text clearly and concisely. Use proper formatting with line breaks. Return ONLY the result.".to_string(),
     }
 }
 
-async fn rephrase(text: &str, action: &str, config: &Value) -> Result<String> {
+fn format_guidelines(fmt: &str) -> &'static str {
+    match fmt {
+        "email" | "formal email" | "professional email" => {
+            "- Line 1: Greeting (e.g. \"Hi Ryan,\")\n\
+             - Line 2: BLANK LINE\n\
+             - Lines 3+: Body paragraphs, each separated by a blank line\n\
+             - Then: BLANK LINE\n\
+             - Then: Sign-off (e.g. \"Best regards,\")\n\
+             - Then: Your name on its own line\n\
+             - Use professional, clear language — rewrite awkward phrasing\n\
+             - Do NOT include a subject line\n\
+             - If no name is mentioned, use \"Hi,\" or \"Hello,\""
+        }
+        "casual message" | "message" | "text message" => {
+            "- Keep it short — 1-3 sentences max\n\
+             - Conversational and friendly tone\n\
+             - No formal greeting/sign-off\n\
+             - Rewrite to sound natural, not robotic"
+        }
+        "slack message" | "teams message" | "chat message" => {
+            "- Keep it concise and direct — one short paragraph\n\
+             - Semi-casual workplace tone\n\
+             - Lead with the key point\n\
+             - No greeting/sign-off needed\n\
+             - Rewrite to be clear and scannable"
+        }
+        "professional" | "formal" => {
+            "- Use professional, polished language\n\
+             - Separate paragraphs with blank lines\n\
+             - Be clear, direct, and well-organized\n\
+             - Actually rewrite — don't just fix typos"
+        }
+        "casual" | "friendly" => {
+            "- Warm, conversational tone\n\
+             - Natural and approachable\n\
+             - Contractions and informal phrasing OK"
+        }
+        "bullet points" | "bullets" => {
+            "- Convert into clear bullet points, one per line\n\
+             - Use '- ' prefix for each bullet\n\
+             - Each bullet = one concise, complete thought\n\
+             - Group related points together\n\
+             - Use a blank line between groups if needed"
+        }
+        "summary" => {
+            "- Condense into 1-3 well-written sentences\n\
+             - Lead with the most important information\n\
+             - Cut filler and repetition"
+        }
+        "code comment" | "comment" => {
+            "- Concise and technical\n\
+             - Explain the 'why', not the 'what'\n\
+             - 1-2 lines max"
+        }
+        _ => {
+            "- Apply proper formatting with line breaks between sections\n\
+             - Use the appropriate tone and structure\n\
+             - Actually rewrite — don't just clean up"
+        }
+    }
+}
+
+async fn rephrase(text: &str, action: &str, format: Option<&str>, config: &Value) -> Result<String> {
     let provider = config["provider"].as_str().unwrap_or("openai");
 
     if provider == "azure" {
-        rephrase_azure(text, action, config).await
+        rephrase_azure(text, action, format, config).await
     } else {
-        rephrase_openai(text, action, config).await
+        rephrase_openai(text, action, format, config).await
     }
 }
 
-async fn rephrase_openai(text: &str, action: &str, config: &Value) -> Result<String> {
+async fn rephrase_openai(text: &str, action: &str, format: Option<&str>, config: &Value) -> Result<String> {
     let api_key = config["openai"]["apiKey"]
         .as_str()
         .map(|s| s.to_string())
@@ -386,7 +469,7 @@ async fn rephrase_openai(text: &str, action: &str, config: &Value) -> Result<Str
     let body = serde_json::json!({
         "model": model,
         "messages": [
-            { "role": "system", "content": build_system_prompt(action) },
+            { "role": "system", "content": build_system_prompt(action, format) },
             { "role": "user", "content": text }
         ],
         "temperature": 0.7,
@@ -424,7 +507,7 @@ async fn rephrase_openai(text: &str, action: &str, config: &Value) -> Result<Str
         .ok_or_else(|| anyhow!("No content in GPT response"))
 }
 
-async fn rephrase_azure(text: &str, action: &str, config: &Value) -> Result<String> {
+async fn rephrase_azure(text: &str, action: &str, format: Option<&str>, config: &Value) -> Result<String> {
     let endpoint = config["azure"]["endpoint"]
         .as_str()
         .ok_or_else(|| anyhow!("Azure endpoint not configured"))?
@@ -449,7 +532,7 @@ async fn rephrase_azure(text: &str, action: &str, config: &Value) -> Result<Stri
 
     let body = serde_json::json!({
         "messages": [
-            { "role": "system", "content": build_system_prompt(action) },
+            { "role": "system", "content": build_system_prompt(action, format) },
             { "role": "user", "content": text }
         ],
         "temperature": 0.7,

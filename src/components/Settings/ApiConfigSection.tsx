@@ -155,7 +155,7 @@ export function ApiConfigSection() {
               Smart Keywords
             </label>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Say "rephrase" at the end to have GPT improve the text
+              Say "rephrase", "format as email", "rephrase as message", etc.
             </p>
           </div>
           <button
