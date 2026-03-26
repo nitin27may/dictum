@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS, Settings, SettingsSchema } from "../types/settings";
 // Lazy import — Tauri store plugin only available in Tauri context
 async function getTauriStore() {
   const { Store } = await import("@tauri-apps/plugin-store");
-  return Store.load("wisper-settings.json");
+  return Store.load("dictum-settings.json");
 }
 
 interface SettingsStore {
@@ -35,7 +35,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           await store.save();
         }
       } else {
-        // First run — check for WISPER_OPENAI_API_KEY env var via Tauri
+        // First run — check for DICTUM_OPENAI_API_KEY env var via Tauri
         const defaultSettings = { ...DEFAULT_SETTINGS };
         set({ settings: defaultSettings, isLoaded: true });
       }

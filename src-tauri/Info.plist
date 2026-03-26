@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Wisper needs microphone access to transcribe your speech to text.</string>
+  <string>Dictum needs microphone access to transcribe your speech to text.</string>
   <key>NSAccessibilityUsageDescription</key>
-  <string>Wisper needs accessibility access to inject transcribed text at your cursor position.</string>
+  <string>Dictum needs accessibility access to inject transcribed text at your cursor position.</string>
   <key>LSUIElement</key>
   <true/>
   <key>LSBackgroundOnly</key>
@@ -15,9 +15,9 @@
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
   <key>CFBundleName</key>
-  <string>Wisper</string>
+  <string>Dictum</string>
   <key>CFBundleDisplayName</key>
-  <string>Wisper</string>
+  <string>Dictum</string>
   <key>CFBundleShortVersionString</key>
   <string>0.1.0</string>
   <key>CFBundleVersion</key>

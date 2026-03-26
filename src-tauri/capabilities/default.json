@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default permissions for Wisper",
+  "description": "Default permissions for Dictum",
   "windows": ["*"],
   "permissions": [
     "core:default",

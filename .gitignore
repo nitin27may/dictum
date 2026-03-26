@@ -12,7 +12,7 @@ node_modules/
 .env.*.local
 
 # Tauri store (contains persisted settings with API keys)
-wisper-settings.json
+dictum-settings.json
 
 # Editor
 .vscode/

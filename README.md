@@ -1,6 +1,6 @@
-# Wisper
+# Dictum
 
-Hold a hotkey, speak, release — your words appear wherever your cursor is. Wisper is a macOS menu-bar app that captures audio, transcribes it via OpenAI or Azure OpenAI Whisper, and injects the text directly into the focused application.
+Hold a hotkey, speak, release — your words appear wherever your cursor is. Dictum is a macOS menu-bar app that captures audio, transcribes it via OpenAI or Azure OpenAI Whisper, and injects the text directly into the focused application.
 
 Built with [Tauri 2](https://tauri.app/) (Rust + React/TypeScript).
 
@@ -64,8 +64,8 @@ The trigger phrase is stripped from the transcription before the clean text is s
 ### Clone and install
 
 ```bash
-git clone https://github.com/your-org/wisper.git
-cd wisper
+git clone https://github.com/your-org/dictum.git
+cd dictum
 npm install
 ```
 
@@ -89,7 +89,7 @@ VITE_AZURE_API_VERSION=2024-02-01
 
 **Option B — Settings UI (runtime)**
 
-Open the tray icon → Settings → API tab. Keys are persisted via the Tauri store plugin (`wisper-settings.json`).
+Open the tray icon → Settings → API tab. Keys are persisted via the Tauri store plugin (`dictum-settings.json`).
 
 ### Run in development
 
@@ -110,7 +110,7 @@ The `.dmg` and `.app` bundle appear in `src-tauri/target/release/bundle/`.
 ## Project structure
 
 ```
-wisper/
+dictum/
 ├── src/                          # React/TypeScript frontend
 │   ├── App.tsx                   # Window routing + settings/API sync to Rust
 │   ├── components/
@@ -190,7 +190,7 @@ Audio is captured at the device's native sample rate and resampled to 16kHz mono
 
 ## Configuration
 
-All settings are persisted to `~/Library/Application Support/com.wisper.app/wisper-settings.json`.
+All settings are persisted to `~/Library/Application Support/com.northbridge.dictum/dictum-settings.json`.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -240,7 +240,7 @@ cargo test
 
 **Whisper cold start** — the first API call after a period of inactivity can take 2–5 seconds. One automatic retry with a 3-second delay is built in.
 
-**Alt+Space on macOS** — Option+Space types a non-breaking space in the frontmost app before the global shortcut fires. Wisper sends a Backspace via AppleScript immediately on injection to remove it.
+**Alt+Space on macOS** — Option+Space types a non-breaking space in the frontmost app before the global shortcut fires. Dictum sends a Backspace via AppleScript immediately on injection to remove it.
 
 **Windows distribution** — requires an EV code signing certificate for SmartScreen clearance (~$400/year). See [`docs/windows-code-signing.md`](docs/windows-code-signing.md).
 

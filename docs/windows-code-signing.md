@@ -1,6 +1,6 @@
 # Windows Code Signing & Installer Guide
 
-This document covers how to sign and distribute the Wisper Windows installer once you have a code signing certificate.
+This document covers how to sign and distribute the Dictum Windows installer once you have a code signing certificate.
 
 ---
 
@@ -29,7 +29,7 @@ Azure Trusted Signing is the cheapest and most CI-friendly option (~$10/month).
 ### 2. Create an Azure Service Principal
 
 ```bash
-az ad sp create-for-rbac --name "wisper-signing" --role contributor \
+az ad sp create-for-rbac --name "dictum-signing" --role contributor \
   --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP>
 ```
 
@@ -120,7 +120,7 @@ npm run tauri build
 
 ```powershell
 signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 ^
-  /a "src-tauri\target\release\bundle\nsis\Wisper_0.1.0_x64-setup.exe"
+  /a "src-tauri\target\release\bundle\nsis\Dictum_0.1.0_x64-setup.exe"
 ```
 
 > This approach requires a human with the USB token plugged in — not suitable for CI/CD.
@@ -211,7 +211,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Wisper v__VERSION__'
+          releaseName: 'Dictum v__VERSION__'
           releaseBody: 'See release notes for details.'
           releaseDraft: true
 
@@ -226,12 +226,12 @@ jobs:
             -kvt "${{ secrets.AZURE_TENANT_ID }}" `
             -kvc "${{ secrets.AZURE_CERT_PROFILE }}" `
             -tr http://timestamp.digicert.com -td sha256 `
-            "src-tauri/target/release/bundle/nsis/Wisper_*_x64-setup.exe"
+            "src-tauri/target/release/bundle/nsis/Dictum_*_x64-setup.exe"
 
       - name: Upload signed installer
         uses: actions/upload-artifact@v4
         with:
-          name: wisper-windows-installer
+          name: dictum-windows-installer
           path: src-tauri/target/release/bundle/nsis/*.exe
 ```
 
@@ -288,14 +288,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Wisper v__VERSION__'
+          releaseName: 'Dictum v__VERSION__'
           releaseBody: 'See release notes for details.'
           releaseDraft: true
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: wisper-windows-installer
+          name: dictum-windows-installer
           path: src-tauri/target/release/bundle/nsis/*.exe
 ```
 
@@ -327,7 +327,7 @@ npm run tauri build
 
 The unsigned `.exe` will be at:
 ```
-src-tauri/target/release/bundle/nsis/Wisper_0.1.0_x64-setup.exe
+src-tauri/target/release/bundle/nsis/Dictum_0.1.0_x64-setup.exe
 ```
 
 > Windows SmartScreen will warn users about unsigned apps. They can click **"More info" → "Run anyway"** to proceed.

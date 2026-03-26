@@ -47,7 +47,7 @@ export function SettingsWindow() {
     <div className="flex flex-col h-screen bg-zinc-900 text-zinc-100">
       {/* Title bar */}
       <div className="flex items-center px-5 py-4 border-b border-zinc-800">
-        <h1 className="text-base font-semibold text-zinc-100">Wisper Settings</h1>
+        <h1 className="text-base font-semibold text-zinc-100">Dictum Settings</h1>
       </div>
 
       {/* Tab bar */}
@@ -108,7 +108,7 @@ export function SettingsWindow() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm text-zinc-300">Launch at login</span>
-                  <p className="text-xs text-zinc-500 mt-0.5">Start Wisper automatically when you log in</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Start Dictum automatically when you log in</p>
                 </div>
                 <button
                   type="button"
@@ -256,7 +256,7 @@ function AboutSection() {
   return (
     <div className="space-y-4 text-sm text-zinc-400">
       <div>
-        <p className="text-zinc-100 font-semibold text-base">Wisper</p>
+        <p className="text-zinc-100 font-semibold text-base">Dictum</p>
         <p className="text-zinc-500 mt-1">Version 0.1.0</p>
       </div>
       <p>

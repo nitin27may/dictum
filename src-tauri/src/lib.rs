@@ -123,20 +123,20 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("Failed to run Wisper");
+        .expect("Failed to run Dictum");
 }
 
 fn setup_tray(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
-    let quit_item = MenuItem::with_id(app, "quit", "Quit Wisper", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit Dictum", true, None::<&str>)?;
 
     let menu = Menu::with_items(app, &[&settings_item, &separator, &quit_item])?;
 
-    TrayIconBuilder::with_id("wisper-tray")
+    TrayIconBuilder::with_id("dictum-tray")
         .menu(&menu)
         .icon(app.default_window_icon().unwrap().clone())
-        .tooltip("Wisper — Hold Alt+Space to transcribe")
+        .tooltip("Dictum — Hold Alt+Space to transcribe")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "settings" => show_settings_window(app),
             "quit" => {

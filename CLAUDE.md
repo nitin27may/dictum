@@ -1,4 +1,4 @@
-# Wisper — Project Instructions for Claude Code
+# Dictum — Project Instructions for Claude Code
 
 ## Tech Stack
 - **Framework**: Tauri 2.x (Rust backend + React/TypeScript frontend)

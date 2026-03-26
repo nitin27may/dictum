@@ -1,4 +1,4 @@
-# Wisper — Copilot Instructions
+# Dictum — Copilot Instructions
 
 ## Build & Run
 
