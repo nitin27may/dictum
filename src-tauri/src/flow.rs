@@ -17,7 +17,6 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 const MIN_HOLD_MS: u128 = 200;
-const MAX_RECORD_SECS: u64 = 60;
 
 /// Called on hotkey press.
 /// Waits for MIN_HOLD_MS before starting mic capture. If the key is released
@@ -61,9 +60,10 @@ pub async fn on_press(app: AppHandle, state: AppState) {
     }
 
     // Duration ticker — emits elapsed seconds every second while recording.
-    // Also enforces the hard MAX_RECORD_SECS cap.
+    // Also enforces the configured max-recording cap.
     let ticker_app = app.clone();
     let ticker_state = state.clone();
+    let max_record_secs = *state.max_record_secs.lock().await;
     tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -72,8 +72,8 @@ pub async fn on_press(app: AppHandle, state: AppState) {
             }
             let elapsed = start_time.elapsed().as_secs();
             emit_overlay(&ticker_app, "recording-tick", elapsed);
-            if elapsed >= MAX_RECORD_SECS {
-                log::info!("Max recording duration ({} sec) reached, auto-stopping", MAX_RECORD_SECS);
+            if elapsed >= max_record_secs {
+                log::info!("Max recording duration ({} sec) reached, auto-stopping", max_record_secs);
                 tauri::async_runtime::spawn(on_release(ticker_app.clone(), ticker_state.clone()));
                 break;
             }

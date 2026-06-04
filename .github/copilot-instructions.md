@@ -38,7 +38,7 @@ The app hides from the macOS Dock via `LSUIElement` (set programmatically with u
 ```
 IDLE → [hotkey hold ≥200ms] → RECORDING → [release] → PROCESSING → SUCCESS/ERROR → IDLE
 ```
-Taps under 200ms are ignored. 60-second hard cap on recording with countdown.
+Taps under 200ms are ignored. Recording auto-stops at the configured limit; default is 180 seconds and Settings allows 60-300 seconds.
 
 ## Key Conventions
 
@@ -62,6 +62,6 @@ Copy `.env.local.example` to `.env.local`. All env vars are prefixed `VITE_` (ex
 
 - **Overlay must use `set_ignore_cursor_events(true)`** or it blocks all mouse events system-wide
 - **Microphone silence detection**: Check RMS ≈ 0 before sending to Whisper API — silent WAVs waste API calls and return empty results
-- **Audio buffer**: 60s cap = ~3.8MB at 16kHz f32
+- **Audio buffer**: configurable 60-300s cap, default 180s (~11.5MB at 16kHz f32)
 - **Clipboard injection**: The only reliable method for Electron apps (VS Code, Slack); AX API doesn't work on them
 - **Whisper cold start**: First API call takes 2-5s; retry logic with 3s timeout is built in

@@ -30,7 +30,7 @@ IDLE → [hold ≥ 200ms] → RECORDING → PROCESSING → SUCCESS | ERROR → I
 - **Smart Keywords** — say `rephrase as email` or `rewrite as bullet points` mid-dictation; GPT reformats the text before injection
 - **Autostart** — optional login item via macOS LaunchAgent
 - **Tray-only** — no Dock icon; app lives in the menu bar
-- **60-second cap** — hard limit with a T-10s countdown in the overlay
+- **Configurable recording cap** — 1 to 5 minutes in Settings, defaulting to 3 minutes
 
 ### Smart Keywords
 
@@ -133,7 +133,7 @@ dictum/
     ├── flow.rs                   # Full recording lifecycle (press → stop → transcribe → inject)
     ├── keywords.rs               # Smart keyword detection and GPT rephrase
     ├── audio/
-    │   ├── capture.rs            # cpal stream, RMS level events, 60s buffer
+     │   ├── capture.rs            # cpal stream, RMS level events, configurable recording buffer
     │   └── encoder.rs            # f32 PCM → WAV bytes (hound)
     ├── hotkey/mod.rs             # Global shortcut registration (main thread)
     ├── injection/
@@ -184,7 +184,7 @@ The clipboard is not saved/restored to avoid triggering clipboard manager apps (
 
 ### Audio
 
-Audio is captured at the device's native sample rate and resampled to 16kHz mono f32 PCM before WAV encoding. The buffer is hard-capped at 60 seconds (~3.8MB).
+Audio is captured at the device's native sample rate and resampled to 16kHz mono f32 PCM before WAV encoding. The recording cap is configurable from 60 to 300 seconds and defaults to 180 seconds. At 16kHz mono f32 PCM, that is about 11.5MB by default and about 19.2MB at the 5-minute maximum.
 
 ---
 
@@ -200,6 +200,7 @@ All settings are persisted to `~/Library/Application Support/com.northbridge.dic
 | GPT model | `gpt-4o-mini` | Used for Smart Keywords rephrasing |
 | Smart Keywords | disabled | Voice-triggered GPT reformatting |
 | Launch at login | disabled | macOS LaunchAgent autostart |
+| Max recording duration | `180` | Auto-stop limit in seconds; configurable from 60 to 300 |
 
 ---
 

@@ -76,3 +76,18 @@ pub async fn set_api_config(
     *state.api_config.lock().await = config;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn set_general_config(
+    config: serde_json::Value,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let max_recording_seconds = config["maxRecordingSeconds"]
+        .as_u64()
+        .filter(|secs| *secs > 0)
+        .unwrap_or(crate::DEFAULT_MAX_RECORD_SECS);
+
+    log::info!("General config updated (max recording: {} sec)", max_recording_seconds);
+    *state.max_record_secs.lock().await = max_recording_seconds;
+    Ok(())
+}

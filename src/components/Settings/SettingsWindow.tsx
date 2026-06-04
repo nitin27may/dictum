@@ -7,6 +7,8 @@ import { HotkeyCapture } from "./HotkeyCapture";
 
 type Tab = "general" | "api" | "about";
 
+const MAX_DURATION_OPTIONS = [60, 120, 180, 240, 300];
+
 export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { settings, save, isLoaded, load } = useSettingsStore();
@@ -95,9 +97,9 @@ export function SettingsWindow() {
                   onChange={(e) => handleMaxDurationChange(Number(e.target.value))}
                   className="bg-zinc-800 border border-zinc-600 rounded-md px-3 py-1.5 text-sm text-zinc-200"
                 >
-                  {[30, 60, 90, 120].map((s) => (
+                  {MAX_DURATION_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s}s
+                      {s / 60} min
                     </option>
                   ))}
                 </select>

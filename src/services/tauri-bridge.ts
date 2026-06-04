@@ -60,6 +60,10 @@ export async function getCurrentHotkey(): Promise<string> {
   return invoke<string>("get_current_hotkey");
 }
 
+export async function setGeneralConfig(config: { maxRecordingSeconds: number }): Promise<void> {
+  await invoke("set_general_config", { config });
+}
+
 // ── Event listeners ───────────────────────────────────────────────────────────
 
 export function onHotkeyPressed(handler: () => void): Promise<UnlistenFn> {

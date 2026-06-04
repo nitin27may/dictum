@@ -35,7 +35,7 @@ All business logic lives in TypeScript. Transcription is a fetch call in `servic
 2. **Overlay window**: always-on-top, click-through (`set_ignore_cursor_events(true)`), transparent, no decorations
 3. **Microphone silence**: detect RMS ≈ 0, surface actionable error (don't send silent WAV to API)
 4. **API keys**: stored via Tauri store plugin with machine UUID-derived encryption; never plaintext
-5. **Audio buffer**: 60s hard cap = ~3.8MB at 16kHz f32; enforce with T-10s UI countdown
+5. **Audio buffer**: configurable 60-300s cap, default 180s (~11.5MB at 16kHz f32)
 
 ## State Machine
 ```

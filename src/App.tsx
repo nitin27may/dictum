@@ -2,9 +2,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 import { Overlay } from "./components/Overlay/Overlay";
 import { SettingsWindow } from "./components/Settings/SettingsWindow";
+import { setGeneralConfig } from "./services/tauri-bridge";
 import { useSettingsStore } from "./store/settingsStore";
 import { invoke } from "@tauri-apps/api/core";
-import type { ApiConfig } from "./types/settings";
+import type { ApiConfig, Settings } from "./types/settings";
 
 /** Merges VITE_* env fallbacks before pushing config to Rust. */
 function pushApiConfig(api: ApiConfig) {
@@ -34,6 +35,12 @@ function pushApiConfig(api: ApiConfig) {
     config.provider = "azure";
   }
   invoke("set_api_config", { config }).catch(console.error);
+}
+
+function pushGeneralConfig(general: Settings["general"]) {
+  setGeneralConfig({
+    maxRecordingSeconds: general.maxRecordingSeconds,
+  }).catch(console.error);
 }
 
 type Route = "overlay" | "settings";
@@ -69,10 +76,16 @@ export default function App() {
 
   // Push API config to Rust whenever settings load or change
   const api = useSettingsStore((s) => s.settings.api);
+  const general = useSettingsStore((s) => s.settings.general);
   useEffect(() => {
     if (!isLoaded) return;
     pushApiConfig(api);
   }, [isLoaded, api]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    pushGeneralConfig(general);
+  }, [isLoaded, general]);
 
   if (ROUTE === "settings") {
     return <SettingsWindow />;

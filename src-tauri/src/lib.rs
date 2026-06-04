@@ -12,7 +12,10 @@ use commands::{
         start_recording, stop_recording,
     },
     injection_commands::{check_accessibility_permission, inject_text},
-    settings_commands::{get_current_hotkey, get_platform, register_hotkey, set_api_config, unregister_hotkeys},
+    settings_commands::{
+        get_current_hotkey, get_platform, register_hotkey, set_api_config, set_general_config,
+        unregister_hotkeys,
+    },
 };
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -25,6 +28,7 @@ use tauri::{
 use tokio::sync::Mutex;
 
 pub const DEFAULT_HOTKEY: &str = "Alt+Space";
+pub const DEFAULT_MAX_RECORD_SECS: u64 = 180;
 
 pub struct AppState {
     pub audio_capture: Arc<Mutex<AudioCapture>>,
@@ -35,6 +39,8 @@ pub struct AppState {
     pub pressed_at: Arc<Mutex<Option<Instant>>>,
     /// API config pushed from JS on startup / settings change
     pub api_config: Arc<Mutex<serde_json::Value>>,
+    /// Max duration for a single recording before auto-stop.
+    pub max_record_secs: Arc<Mutex<u64>>,
     /// True while replaying a consumed keypress — prevents the replayed
     /// CGEvent from retriggering the global shortcut handler.
     pub is_replaying: Arc<AtomicBool>,
@@ -52,6 +58,7 @@ impl AppState {
                 "openai": { "whisperModel": "whisper-1" },
                 "azure": {}
             }))),
+            max_record_secs: Arc::new(Mutex::new(DEFAULT_MAX_RECORD_SECS)),
             is_replaying: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -65,6 +72,7 @@ impl Clone for AppState {
             is_recording: Arc::clone(&self.is_recording),
             pressed_at: Arc::clone(&self.pressed_at),
             api_config: Arc::clone(&self.api_config),
+            max_record_secs: Arc::clone(&self.max_record_secs),
             is_replaying: Arc::clone(&self.is_replaying),
         }
     }
@@ -114,6 +122,7 @@ pub fn run() {
             get_platform,
             get_current_hotkey,
             set_api_config,
+            set_general_config,
         ])
         .setup(|app| {
             setup_tray(app)?;

@@ -44,7 +44,7 @@ export const SettingsSchema = z.object({
   general: z
     .object({
       launchAtLogin: z.boolean().default(false),
-      maxRecordingSeconds: z.number().default(60),
+      maxRecordingSeconds: z.number().default(180),
       overlayPosition: z
         .enum(["bottom-center", "bottom-left", "bottom-right"])
         .default("bottom-center"),

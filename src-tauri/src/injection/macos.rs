@@ -51,15 +51,23 @@ fn set_clipboard(text: &str) -> Result<()> {
 fn send_paste() -> Result<()> {
     // Use AppleScript to send Cmd+V to the frontmost application
     let script = r#"tell application "System Events" to keystroke "v" using command down"#;
-    let status = Command::new("osascript")
+    let output = Command::new("osascript")
         .arg("-e")
         .arg(script)
-        .status()
+        .output()
         .map_err(|e| anyhow!("osascript failed: {}", e))?;
 
-    if !status.success() {
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if stderr.is_empty() {
+            return Err(anyhow!(
+                "osascript returned non-zero exit code. Enable Dictum in Privacy & Security > Accessibility and allow automation of System Events."
+            ));
+        }
+
         return Err(anyhow!(
-            "osascript returned non-zero exit code. Accessibility permission may be required."
+            "osascript returned non-zero exit code: {}. Enable Dictum in Privacy & Security > Accessibility and allow automation of System Events.",
+            stderr
         ));
     }
 
