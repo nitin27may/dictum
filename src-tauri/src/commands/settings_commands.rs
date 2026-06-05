@@ -87,7 +87,49 @@ pub async fn set_general_config(
         .filter(|secs| *secs > 0)
         .unwrap_or(crate::DEFAULT_MAX_RECORD_SECS);
 
-    log::info!("General config updated (max recording: {} sec)", max_recording_seconds);
+    let audio_device = config["audioDevice"].as_str().map(str::trim).filter(|s| !s.is_empty());
+
+    log::info!(
+        "General config updated (max recording: {} sec, audio device: {})",
+        max_recording_seconds,
+        audio_device.unwrap_or("default")
+    );
+
     *state.max_record_secs.lock().await = max_recording_seconds;
+    state
+        .audio_capture
+        .lock()
+        .await
+        .set_device_name(audio_device.map(|s| s.to_string()));
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_audio_device(
+    device_name: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if state.audio_capture.lock().await.is_recording() {
+        return Err("Cannot switch microphone while recording".to_string());
+    }
+
+    let normalized = device_name
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    if let Some(ref name) = normalized {
+        let available = crate::audio::capture::list_input_devices().map_err(|e| e.to_string())?;
+        if !available.iter().any(|d| d == name) {
+            return Err(format!("Microphone '{}' is not available", name));
+        }
+    }
+
+    log::info!(
+        "Audio device switched to: {}",
+        normalized.as_deref().unwrap_or("system default")
+    );
+
+    state.audio_capture.lock().await.set_device_name(normalized);
     Ok(())
 }

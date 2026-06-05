@@ -37,9 +37,10 @@ function pushApiConfig(api: ApiConfig) {
   invoke("set_api_config", { config }).catch(console.error);
 }
 
-function pushGeneralConfig(general: Settings["general"]) {
+function pushGeneralConfig(general: Settings["general"], audioDevice?: string) {
   setGeneralConfig({
     maxRecordingSeconds: general.maxRecordingSeconds,
+    audioDevice,
   }).catch(console.error);
 }
 
@@ -77,6 +78,7 @@ export default function App() {
   // Push API config to Rust whenever settings load or change
   const api = useSettingsStore((s) => s.settings.api);
   const general = useSettingsStore((s) => s.settings.general);
+  const audioDevice = useSettingsStore((s) => s.settings.audioDevice);
   useEffect(() => {
     if (!isLoaded) return;
     pushApiConfig(api);
@@ -84,8 +86,8 @@ export default function App() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    pushGeneralConfig(general);
-  }, [isLoaded, general]);
+    pushGeneralConfig(general, audioDevice);
+  }, [isLoaded, general, audioDevice]);
 
   if (ROUTE === "settings") {
     return <SettingsWindow />;

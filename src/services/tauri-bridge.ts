@@ -32,6 +32,10 @@ export async function requestMicrophonePermission(): Promise<boolean | null> {
   return invoke<boolean | null>("request_microphone_permission");
 }
 
+export async function setAudioDevice(deviceName?: string): Promise<void> {
+  await invoke("set_audio_device", { deviceName });
+}
+
 // ── Injection ─────────────────────────────────────────────────────────────────
 
 export async function injectText(text: string): Promise<void> {
@@ -60,7 +64,10 @@ export async function getCurrentHotkey(): Promise<string> {
   return invoke<string>("get_current_hotkey");
 }
 
-export async function setGeneralConfig(config: { maxRecordingSeconds: number }): Promise<void> {
+export async function setGeneralConfig(config: {
+  maxRecordingSeconds: number;
+  audioDevice?: string;
+}): Promise<void> {
   await invoke("set_general_config", { config });
 }
 

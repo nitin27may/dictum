@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { registerHotkey } from "../../services/tauri-bridge";
+import { getAudioDevices, registerHotkey, setAudioDevice } from "../../services/tauri-bridge";
 import { useSettingsStore } from "../../store/settingsStore";
 import { ApiConfigSection } from "./ApiConfigSection";
 import { HotkeyCapture } from "./HotkeyCapture";
@@ -13,7 +13,9 @@ export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const { settings, save, isLoaded, load } = useSettingsStore();
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
+  const [audioDeviceError, setAudioDeviceError] = useState<string | null>(null);
   const [autostart, setAutostart] = useState(false);
+  const [audioDevices, setAudioDevices] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isLoaded) load();
@@ -22,6 +24,16 @@ export function SettingsWindow() {
   useEffect(() => {
     isEnabled().then(setAutostart).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    getAudioDevices()
+      .then(setAudioDevices)
+      .catch((err) => {
+        console.error("Failed to load audio devices:", err);
+        setAudioDevices([]);
+      });
+  }, [isLoaded]);
 
   const handleHotkeyChange = async (hotkey: string) => {
     setHotkeyError(null);
@@ -35,6 +47,16 @@ export function SettingsWindow() {
 
   const handleMaxDurationChange = (secs: number) => {
     save({ general: { ...settings.general, maxRecordingSeconds: secs } });
+  };
+
+  const handleAudioDeviceChange = async (deviceName: string) => {
+    setAudioDeviceError(null);
+    try {
+      await setAudioDevice(deviceName || undefined);
+      await save({ audioDevice: deviceName || undefined });
+    } catch (err) {
+      setAudioDeviceError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   if (!isLoaded) {
@@ -90,19 +112,42 @@ export function SettingsWindow() {
             </Section>
 
             <Section title="Recording">
-              <div className="flex items-center gap-4">
-                <label className="text-sm text-zinc-300">Max duration</label>
-                <select
-                  value={settings.general.maxRecordingSeconds}
-                  onChange={(e) => handleMaxDurationChange(Number(e.target.value))}
-                  className="bg-zinc-800 border border-zinc-600 rounded-md px-3 py-1.5 text-sm text-zinc-200"
-                >
-                  {MAX_DURATION_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s / 60} min
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <label className="text-sm text-zinc-300">Max duration</label>
+                  <select
+                    value={settings.general.maxRecordingSeconds}
+                    onChange={(e) => handleMaxDurationChange(Number(e.target.value))}
+                    className="bg-zinc-800 border border-zinc-600 rounded-md px-3 py-1.5 text-sm text-zinc-200"
+                  >
+                    {MAX_DURATION_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s / 60} min
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="text-sm text-zinc-300">Microphone</label>
+                  <select
+                    value={settings.audioDevice ?? ""}
+                    onChange={(e) => {
+                      handleAudioDeviceChange(e.target.value);
+                    }}
+                    className="bg-zinc-800 border border-zinc-600 rounded-md px-3 py-1.5 text-sm text-zinc-200 min-w-[260px]"
+                  >
+                    <option value="">System default</option>
+                    {audioDevices.map((device) => (
+                      <option key={device} value={device}>
+                        {device}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {audioDeviceError && (
+                  <p className="text-xs text-red-400">{audioDeviceError}</p>
+                )}
               </div>
             </Section>
 

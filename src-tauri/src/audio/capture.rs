@@ -111,6 +111,10 @@ impl AudioCapture {
         self.stream.is_some()
     }
 
+    pub fn set_device_name(&mut self, device_name: Option<String>) {
+        self.device_name = device_name;
+    }
+
     fn find_device(&self, host: &cpal::Host) -> Result<Device> {
         if let Some(name) = &self.device_name {
             host.input_devices()?

@@ -13,7 +13,8 @@ use commands::{
     },
     injection_commands::{check_accessibility_permission, inject_text},
     settings_commands::{
-        get_current_hotkey, get_platform, register_hotkey, set_api_config, set_general_config,
+        get_current_hotkey, get_platform, register_hotkey, set_api_config, set_audio_device,
+        set_general_config,
         unregister_hotkeys,
     },
 };
@@ -123,6 +124,7 @@ pub fn run() {
             get_current_hotkey,
             set_api_config,
             set_general_config,
+            set_audio_device,
         ])
         .setup(|app| {
             setup_tray(app)?;
