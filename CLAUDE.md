@@ -2,8 +2,8 @@
 
 ## Tech Stack
 - **Framework**: Tauri 2.x (Rust backend + React/TypeScript frontend)
-- **UI**: React 18, TypeScript strict mode, Tailwind CSS, Framer Motion
-- **State**: Zustand 5 (stores), Zod (validation/schemas)
+- **UI**: React 19, TypeScript 6 strict mode, Vite 8, Tailwind CSS 4, Framer Motion
+- **State**: Zustand 5 (stores), Zod 4 (validation/schemas)
 - **Audio**: cpal (Rust, 16kHz mono f32), hound (WAV encoding)
 - **AI**: Azure OpenAI Whisper (primary), OpenAI API (fallback)
 - **HTTP**: reqwest (Rust, multipart)
@@ -64,10 +64,10 @@ RECORDING → [released ≥ 200ms] → PROCESSING → SUCCESS | ERROR → IDLE
 
 ## Dev Commands
 ```bash
-npm run tauri dev       # Start dev server + Tauri app
-npm run tauri build     # Production build
+pnpm run tauri dev       # Start dev server + Tauri app
+pnpm run tauri build     # Production build
 cargo test              # Run Rust tests (from src-tauri/)
-npm run type-check      # TypeScript check without build
+pnpm run type-check      # TypeScript check without build
 ```
 
 ## Phase Boundaries

@@ -3,9 +3,9 @@
 ## Build & Run
 
 ```bash
-npm run tauri dev         # Dev server + Tauri app (hot reload)
-npm run tauri build       # Production build
-npm run type-check        # TypeScript strict check (no emit)
+pnpm run tauri dev         # Dev server + Tauri app (hot reload)
+pnpm run tauri build       # Production build
+pnpm run type-check        # TypeScript strict check (no emit)
 cd src-tauri && cargo test # Rust tests
 cargo test test_name      # Single Rust test (from src-tauri/)
 ```
