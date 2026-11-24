@@ -21,7 +21,7 @@
     "openai": "^4",
     "react": "^18",
     "react-dom": "^18",
-    "zod": "^3",
+    "zod": "^4",
     "zustand": "^5"
   },
   "devDependencies": {
