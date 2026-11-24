@@ -53,7 +53,7 @@ The trigger phrase is stripped from the transcription before the clean text is s
 
 - macOS 13 Ventura or later
 - Rust 1.93+ (`rustup update stable`)
-- Node.js 20+
+- Node.js 26 (LTS) and pnpm 10 (`corepack enable` or `npm i -g pnpm@10.33.0`)
 - **Accessibility permission** — required for text injection via AppleScript (System Settings → Privacy & Security → Accessibility)
 - **Microphone permission** — prompted on first use
 
@@ -66,7 +66,7 @@ The trigger phrase is stripped from the transcription before the clean text is s
 ```bash
 git clone https://github.com/your-org/dictum.git
 cd dictum
-npm install
+pnpm install
 ```
 
 ### Configure API keys
@@ -94,13 +94,13 @@ Open the tray icon → Settings → API tab. Keys are persisted via the Tauri st
 ### Run in development
 
 ```bash
-npm run tauri dev
+pnpm run tauri dev
 ```
 
 ### Build for distribution
 
 ```bash
-npm run tauri build
+pnpm run tauri build
 ```
 
 The `.dmg` and `.app` bundle appear in `src-tauri/target/release/bundle/`.
@@ -208,10 +208,10 @@ All settings are persisted to `~/Library/Application Support/com.northbridge.dic
 
 ```bash
 # Dev server + Tauri app
-npm run tauri dev
+pnpm run tauri dev
 
 # TypeScript type check (no build)
-npm run type-check
+pnpm run type-check
 
 # Rust check (from src-tauri/)
 cargo check
@@ -253,9 +253,9 @@ cargo test
 |-------|-----------|
 | Desktop runtime | Tauri 2.x |
 | Backend | Rust (tokio async, reqwest, cpal, hound) |
-| Frontend | React 18, TypeScript strict, Tailwind CSS, Framer Motion |
+| Frontend | React 19, TypeScript 6 strict, Vite 8, Tailwind CSS 4, Framer Motion |
 | State | Zustand 5 |
-| Validation | Zod |
+| Validation | Zod 4 |
 | AI | OpenAI Whisper, GPT-4o-mini (optional) |
 | AI (Azure) | Azure OpenAI Whisper + GPT deployments |
 | Persistence | tauri-plugin-store |
