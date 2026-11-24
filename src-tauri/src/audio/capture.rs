@@ -38,7 +38,7 @@ impl AudioCapture {
         let device = self.find_device(&host)?;
         log::info!(
             "Recording from device: \"{}\"",
-            device.name().unwrap_or_else(|_| "unknown".into())
+            device_label(&device)
         );
         let (config, sample_rate) = self.find_config(&device)?;
         self.actual_sample_rate = sample_rate;
@@ -53,7 +53,7 @@ impl AudioCapture {
         let emit_interval = std::time::Duration::from_millis(LEVEL_EMIT_INTERVAL_MS);
 
         let stream = device.build_input_stream(
-            &config,
+            config,
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
                 if let Ok(mut buf) = buffer.lock() {
                     buf.extend_from_slice(data);
@@ -118,7 +118,7 @@ impl AudioCapture {
     fn find_device(&self, host: &cpal::Host) -> Result<Device> {
         if let Some(name) = &self.device_name {
             host.input_devices()?
-                .find(|d| d.name().map(|n| &n == name).unwrap_or(false))
+                .find(|d| device_name(d).as_deref() == Some(name.as_str()))
                 .ok_or_else(|| anyhow!("Audio device '{}' not found", name))
         } else {
             host.default_input_device()
@@ -131,13 +131,13 @@ impl AudioCapture {
         for range in supported {
             if range.channels() == CHANNELS
                 && range.sample_format() == SampleFormat::F32
-                && range.min_sample_rate().0 <= SAMPLE_RATE
-                && range.max_sample_rate().0 >= SAMPLE_RATE
+                && range.min_sample_rate() <= SAMPLE_RATE
+                && range.max_sample_rate() >= SAMPLE_RATE
             {
                 return Ok((
                     StreamConfig {
                         channels: CHANNELS,
-                        sample_rate: cpal::SampleRate(SAMPLE_RATE),
+                        sample_rate: SAMPLE_RATE,
                         buffer_size: cpal::BufferSize::Default,
                     },
                     SAMPLE_RATE,
@@ -146,7 +146,7 @@ impl AudioCapture {
         }
 
         let default = device.default_input_config()?;
-        let actual_rate = default.sample_rate().0;
+        let actual_rate = default.sample_rate();
         log::warn!(
             "Could not find exact 16kHz mono f32 config; using default: {:?} ({}Hz)",
             default,
@@ -154,6 +154,15 @@ impl AudioCapture {
         );
         Ok((default.into(), actual_rate))
     }
+}
+
+/// Human-readable device name (the same string the settings UI stores).
+fn device_name(device: &Device) -> Option<String> {
+    device.description().ok().map(|d| d.name().to_string())
+}
+
+fn device_label(device: &Device) -> String {
+    device_name(device).unwrap_or_else(|| "unknown".into())
 }
 
 fn compute_rms(samples: &[f32]) -> f32 {
@@ -168,7 +177,7 @@ pub fn list_input_devices() -> Result<Vec<String>> {
     let host = cpal::default_host();
     let devices = host
         .input_devices()?
-        .filter_map(|d| d.name().ok())
+        .filter_map(|d| device_name(&d))
         .collect();
     Ok(devices)
 }

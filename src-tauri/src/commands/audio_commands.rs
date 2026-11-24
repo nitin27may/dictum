@@ -90,9 +90,9 @@ pub async fn request_microphone_permission() -> Result<Option<bool>, String> {
         // Building + playing the stream triggers the macOS permission dialog
         let stream = device
             .build_input_stream(
-                &config.into(),
+                config.into(),
                 |_data: &[f32], _info: &cpal::InputCallbackInfo| {},
-                |_err: cpal::StreamError| {},
+                |_err: cpal::Error| {},
                 None,
             )
             .map_err(|e| e.to_string())?;

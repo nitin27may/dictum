@@ -38,7 +38,7 @@ pub async fn inject_text(text: &str) -> Result<()> {
         GlobalUnlock(hmem);
 
         // CF_UNICODETEXT = 13
-        SetClipboardData(13, HANDLE(hmem.0)).map_err(|e| {
+        SetClipboardData(13, Some(HANDLE(hmem.0))).map_err(|e| {
             let _ = CloseClipboard();
             anyhow!("SetClipboardData failed: {}", e)
         })?;
