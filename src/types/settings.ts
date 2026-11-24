@@ -9,7 +9,7 @@ export const ApiConfigSchema = z.object({
       gptModel: z.string().default("gpt-4o-mini"),
       baseUrl: z.string().optional(), // for custom proxies
     })
-    .default({}),
+    .prefault({}),
   azure: z
     .object({
       endpoint: z.string().optional(),
@@ -18,19 +18,19 @@ export const ApiConfigSchema = z.object({
       gptDeployment: z.string().default("gpt-4o-mini"),
       apiVersion: z.string().default("2024-02-01"),
     })
-    .default({}),
+    .prefault({}),
   smartKeywords: z
     .object({
       enabled: z.boolean().default(false),
     })
-    .default({}),
+    .prefault({}),
 });
 
 export const SettingsSchema = z.object({
   version: z.number().default(1),
   hotkey: z.string().default("Alt+Space"),
   audioDevice: z.string().optional(),
-  api: ApiConfigSchema.default({
+  api: ApiConfigSchema.prefault({
     provider: "openai",
     openai: {},
     azure: {},
@@ -40,7 +40,7 @@ export const SettingsSchema = z.object({
       enabled: z.boolean().default(false),
       activeProfileId: z.string().optional(),
     })
-    .default({}),
+    .prefault({}),
   general: z
     .object({
       launchAtLogin: z.boolean().default(false),
@@ -49,7 +49,7 @@ export const SettingsSchema = z.object({
         .enum(["bottom-center", "bottom-left", "bottom-right"])
         .default("bottom-center"),
     })
-    .default({}),
+    .prefault({}),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
